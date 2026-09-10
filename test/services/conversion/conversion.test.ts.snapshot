@@ -1,0 +1,910 @@
+exports[`conversion golden-master > confluence → markdown > color-span 1`] = `
+Texte <span style="color: rgb(255,86,48);">rouge</span> ici.
+`;
+
+exports[`conversion golden-master > confluence → markdown > del-underline 1`] = `
+texte ~barré~ et <u>souligné</u>.
+`;
+
+exports[`conversion golden-master > confluence → markdown > drawio-adf 1`] = `
+<div data-confluence-macro="PGFjOmFkZi1leHRlbnNpb24+PGFjOmFkZi1ub2RlIHR5cGU9ImV4dGVuc2lvbiI+PGFjOmFkZi1hdHRyaWJ1dGUga2V5PSJleHRlbnNpb24ta2V5Ij4xYWZkY2U1Mi9zdGF0aWMvZHJhd2lvPC9hYzphZGYtYXR0cmlidXRlPjxhYzphZGYtYXR0cmlidXRlIGtleT0iZXh0ZW5zaW9uLXR5cGUiPmNvbS5hdGxhc3NpYW4uZWNvc3lzdGVtPC9hYzphZGYtYXR0cmlidXRlPjxhYzphZGYtYXR0cmlidXRlIGtleT0idGV4dCI+RGlhZ3JhbW1lIGRyYXcuaW88L2FjOmFkZi1hdHRyaWJ1dGU+PGFjOmFkZi1hdHRyaWJ1dGUga2V5PSJsYXlvdXQiPmRlZmF1bHQ8L2FjOmFkZi1hdHRyaWJ1dGU+PGFjOmFkZi1hdHRyaWJ1dGUga2V5PSJsb2NhbC1pZCI+Mjk5ZGVlYjU8L2FjOmFkZi1hdHRyaWJ1dGU+PC9hYzphZGYtbm9kZT48YWM6YWRmLWZhbGxiYWNrPmZhbGxiYWNrPC9hYzphZGYtZmFsbGJhY2s+PC9hYzphZGYtZXh0ZW5zaW9uPg=="></div>
+`;
+
+exports[`conversion golden-master > confluence → markdown > drawio-classic 1`] = `
+<div data-confluence-macro="PGFjOnN0cnVjdHVyZWQtbWFjcm8gYWM6bmFtZT0iZHJhd2lvIiBhYzpzY2hlbWEtdmVyc2lvbj0iMSI+PGFjOnBhcmFtZXRlciBhYzpuYW1lPSJkaWFncmFtTmFtZSI+bW9uLWRpYWdyYW1tZS5kcmF3aW88L2FjOnBhcmFtZXRlcj48L2FjOnN0cnVjdHVyZWQtbWFjcm8+"></div>
+`;
+
+exports[`conversion golden-master > confluence → markdown > generated-info-block 1`] = `
+Contenu réel.
+`;
+
+exports[`conversion golden-master > confluence → markdown > heading 1`] = `
+# Titre 1
+
+## Titre 2
+
+### Titre 3
+`;
+
+exports[`conversion golden-master > confluence → markdown > hr-with-attrs 1`] = `
+Avant
+
+---
+
+Après
+`;
+
+exports[`conversion golden-master > confluence → markdown > image-attachment 1`] = `
+![photo.png](img/photo.png)
+`;
+
+exports[`conversion golden-master > confluence → markdown > image-attachment-no-relpath 1`] = `
+![photo.png](photo.png)
+`;
+
+exports[`conversion golden-master > confluence → markdown > image-url 1`] = `
+![](https://example.com/x.png)
+`;
+
+exports[`conversion golden-master > confluence → markdown > jira-datasource-table 1`] = `
+<table>
+<tbody>
+<tr><td><p><a href="https://example.atlassian.net/issues/?jql=text%20~%20%22DEP-918%22">Tableau Jira</a></p></td></tr>
+</tbody>
+</table>
+`;
+
+exports[`conversion golden-master > confluence → markdown > jira-inline-card 1`] = `
+Ticket [DEP-918](https://example.atlassian.net/browse/DEP-918) ici.
+`;
+
+exports[`conversion golden-master > confluence → markdown > jira-macro-old 1`] = `
+Ticket [DEP-918](https://example.atlassian.net/browse/DEP-918) ici.
+`;
+
+exports[`conversion golden-master > confluence → markdown > macro-code-entities 1`] = `
+\`\`\`html
+<div> & </div>
+\`\`\`
+`;
+
+exports[`conversion golden-master > confluence → markdown > macro-code-lang 1`] = `
+\`\`\`python
+print("hi")
+\`\`\`
+`;
+
+exports[`conversion golden-master > confluence → markdown > macro-code-no-lang 1`] = `
+\`\`\`
+texte brut
+\`\`\`
+`;
+
+exports[`conversion golden-master > confluence → markdown > macro-expand 1`] = `
+> [expand Développer]
+>
+> Texte caché
+`;
+
+exports[`conversion golden-master > confluence → markdown > macro-info 1`] = `
+> [info]
+>
+> Volet information
+`;
+
+exports[`conversion golden-master > confluence → markdown > macro-info-title 1`] = `
+> [info Mon titre]
+>
+> Corps
+`;
+
+exports[`conversion golden-master > confluence → markdown > macro-note-warning-tip 1`] = `
+> [note]
+>
+> Note
+
+> [warning]
+>
+> Warn
+
+> [tip]
+>
+> Tip
+`;
+
+exports[`conversion golden-master > confluence → markdown > nested-list-in-cell 1`] = `
+<table>
+<tbody>
+<tr><td><ul><li><p>Liste 1</p></li><li><p>Liste 2</p><ul><li><p>Sous liste 1</p></li></ul></li></ul></td></tr>
+</tbody>
+</table>
+`;
+
+exports[`conversion golden-master > confluence → markdown > ordered-list-in-cell 1`] = `
+<table>
+<tbody>
+<tr><td><ol start="1"><li><p>Numéro 1</p></li><li><p>Numéro 2</p><ol start="1"><li><p>Sous numero a</p></li></ol></li></ol></td></tr>
+</tbody>
+</table>
+`;
+
+exports[`conversion golden-master > confluence → markdown > paragraph-inline 1`] = `
+Texte **gras** et _italique_ et \`code\`.
+`;
+
+exports[`conversion golden-master > confluence → markdown > status-macro-inline 1`] = `
+Statut : <span data-confluence-status="Green" style="background-color:#E3FCEF;color:#006644;padding:2px 6px;border-radius:3px;font-weight:bold">DONE</span> validé.
+`;
+
+exports[`conversion golden-master > confluence → markdown > status-macro-standalone 1`] = `
+<span data-confluence-status="Blue" style="background-color:#DEEBFF;color:#0747A6;padding:2px 6px;border-radius:3px;font-weight:bold">NEW</span>
+`;
+
+exports[`conversion golden-master > confluence → markdown > table-cell-multi-block 1`] = `
+<table>
+<tbody>
+<tr><td>para 1<p></p><p>para 2</p></td><td><blockquote data-macro-type="info"><p>info</p></blockquote></td></tr>
+</tbody>
+</table>
+`;
+
+exports[`conversion golden-master > confluence → markdown > table-cell-single-p 1`] = `
+| **Table 1** | **Table 2** |
+| --- | --- |
+| elm 1 | elm 2 |
+`;
+
+exports[`conversion golden-master > confluence → markdown > task-list-nested 1`] = `
+- [ ] Tache 1
+- [x] Tache 2
+  - [ ] Sous tache 1
+`;
+
+exports[`conversion golden-master > confluence → markdown > task-list-simple 1`] = `
+- [ ] Tache 1
+- [x] Tache 2
+`;
+
+exports[`conversion golden-master > confluence → markdown > task-list-uuid-formats 1`] = `
+- [ ] A
+- [x] B
+`;
+
+exports[`conversion golden-master > confluence → markdown > time-datetime 1`] = `
+Date : 📅 2026-06-15
+`;
+
+exports[`conversion golden-master > confluence → markdown > time-no-datetime 1`] = `
+Date :
+`;
+
+exports[`conversion golden-master > confluence → markdown > time-self-closing 1`] = `
+Date : 📅 2026-06-15
+`;
+
+exports[`conversion golden-master > confluence → markdown > toc-macro 1`] = `
+Après TOC.
+`;
+
+exports[`conversion golden-master > confluence → markdown > toc-self-closing 1`] = `
+Après TOC.
+`;
+
+exports[`conversion golden-master > confluence → markdown > user-mention 1`] = `
+Mention à
+`;
+
+exports[`conversion golden-master > confluence → markdown > whiteboard-unknown-macro 1`] = `
+<div data-confluence-macro="PGFjOnN0cnVjdHVyZWQtbWFjcm8gYWM6bmFtZT0ibmF0aXZlLWVtYmVkOndoaXRlYm9hcmQiIGFjOnNjaGVtYS12ZXJzaW9uPSIxIiBhYzptYWNyby1pZD0iZDVmNmY5YmIiPjxhYzpwYXJhbWV0ZXIgYWM6bmFtZT0iYWxpZ25tZW50Ij5jZW50ZXI8L2FjOnBhcmFtZXRlcj48YWM6cGFyYW1ldGVyIGFjOm5hbWU9InVybCI+aHR0cHM6Ly9leGFtcGxlLmF0bGFzc2lhbi5uZXQvd2lraS9zcGFjZXMvREEvd2hpdGVib2FyZC81ODc0NjE0MzMxPC9hYzpwYXJhbWV0ZXI+PGFjOnBhcmFtZXRlciBhYzpuYW1lPSJhbHdheXNTaG93VGl0bGUiPmZhbHNlPC9hYzpwYXJhbWV0ZXI+PGFjOnBhcmFtZXRlciBhYzpuYW1lPSJoZWlnaHQiPjYwMDwvYWM6cGFyYW1ldGVyPjwvYWM6c3RydWN0dXJlZC1tYWNybz4="></div>
+`;
+
+exports[`conversion golden-master > markdown → confluence > blockquote-expand (sourceFile) 1`] = `
+<ac:structured-macro ac:name="expand">
+  <ac:parameter ac:name="title">Mon titre</ac:parameter>
+  <ac:rich-text-body>
+<p>Contenu caché.</p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > blockquote-info (sourceFile) 1`] = `
+<ac:structured-macro ac:name="info">
+  <ac:rich-text-body>
+<p>Corps de l'info.</p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > blockquote-info-inline (sourceFile) 1`] = `
+<ac:structured-macro ac:name="info">
+  <ac:rich-text-body>
+<p>Corps sur la même ligne.</p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > blockquote-multiline (sourceFile) 1`] = `
+<ac:structured-macro ac:name="info">
+  <ac:rich-text-body>
+<p>Ligne 1</p>
+<p>Ligne 2 avec <strong>gras</strong>.</p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > blockquote-no-marker-defaults-to-info-1 (sourceFile) 1`] = `
+<ac:structured-macro ac:name="info">
+  <ac:rich-text-body>
+<p>warning: ceci est important.</p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > blockquote-no-marker-defaults-to-info-2 (sourceFile) 1`] = `
+<ac:structured-macro ac:name="info">
+  <ac:rich-text-body>
+<p>note: une remarque.</p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > blockquote-note (sourceFile) 1`] = `
+<ac:structured-macro ac:name="note">
+  <ac:rich-text-body>
+<p>Corps de la note.</p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > blockquote-plain (sourceFile) 1`] = `
+<ac:structured-macro ac:name="info">
+  <ac:rich-text-body>
+<p>Une citation simple.</p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > blockquote-tip (sourceFile) 1`] = `
+<ac:structured-macro ac:name="tip">
+  <ac:rich-text-body>
+<p>Astuce utile.</p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > blockquote-warning (sourceFile) 1`] = `
+<ac:structured-macro ac:name="warning">
+  <ac:rich-text-body>
+<p>Attention danger.</p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > code-cdata-edge (sourceFile) 1`] = `
+<ac:structured-macro ac:name="code">
+  <ac:parameter ac:name="language">none</ac:parameter>
+  <ac:parameter ac:name="linenumbers">true</ac:parameter>
+  <ac:plain-text-body><![CDATA[fin de cdata ]]]]><![CDATA[> au milieu]]></ac:plain-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > code-js (sourceFile) 1`] = `
+<ac:structured-macro ac:name="code">
+  <ac:parameter ac:name="language">javascript</ac:parameter>
+  <ac:parameter ac:name="linenumbers">true</ac:parameter>
+  <ac:plain-text-body><![CDATA[console.log('hi');]]></ac:plain-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > code-no-lang (sourceFile) 1`] = `
+<ac:structured-macro ac:name="code">
+  <ac:parameter ac:name="language">none</ac:parameter>
+  <ac:parameter ac:name="linenumbers">true</ac:parameter>
+  <ac:plain-text-body><![CDATA[code brut
+ligne 2]]></ac:plain-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > code-python (sourceFile) 1`] = `
+<ac:structured-macro ac:name="code">
+  <ac:parameter ac:name="language">python</ac:parameter>
+  <ac:parameter ac:name="linenumbers">true</ac:parameter>
+  <ac:plain-text-body><![CDATA[print('hi')]]></ac:plain-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > code-shell (sourceFile) 1`] = `
+<ac:structured-macro ac:name="code">
+  <ac:parameter ac:name="language">bash</ac:parameter>
+  <ac:parameter ac:name="linenumbers">true</ac:parameter>
+  <ac:plain-text-body><![CDATA[ls -la]]></ac:plain-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > code-ts (sourceFile) 1`] = `
+<ac:structured-macro ac:name="code">
+  <ac:parameter ac:name="language">javascript</ac:parameter>
+  <ac:parameter ac:name="linenumbers">true</ac:parameter>
+  <ac:plain-text-body><![CDATA[const x: number = 1;]]></ac:plain-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > code-unknown-lang (sourceFile) 1`] = `
+<ac:structured-macro ac:name="code">
+  <ac:parameter ac:name="language">none</ac:parameter>
+  <ac:parameter ac:name="linenumbers">true</ac:parameter>
+  <ac:plain-text-body><![CDATA[IDENTIFICATION]]></ac:plain-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > code-with-entities (sourceFile) 1`] = `
+<ac:structured-macro ac:name="code">
+  <ac:parameter ac:name="language">html</ac:parameter>
+  <ac:parameter ac:name="linenumbers">true</ac:parameter>
+  <ac:plain-text-body><![CDATA[<div class="x"> & </div>]]></ac:plain-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > code-yaml (sourceFile) 1`] = `
+<ac:structured-macro ac:name="code">
+  <ac:parameter ac:name="language">yaml</ac:parameter>
+  <ac:parameter ac:name="linenumbers">true</ac:parameter>
+  <ac:plain-text-body><![CDATA[key: value]]></ac:plain-text-body>
+</ac:structured-macro>
+`;
+
+exports[`conversion golden-master > markdown → confluence > date-marker (sourceFile) 1`] = `
+<p>Date : <time datetime="2026-06-15"/></p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > empty (sourceFile) 1`] = `
+
+`;
+
+exports[`conversion golden-master > markdown → confluence > entities (sourceFile) 1`] = `
+<p>Caractères &amp; &lt; &gt; " ' spéciaux.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > heading-levels (sourceFile) 1`] = `
+<h1>H1</h1>
+<h2>H2</h2>
+<h3>H3</h3>
+<h4>H4</h4>
+<h5>H5</h5>
+<h6>H6</h6>
+`;
+
+exports[`conversion golden-master > markdown → confluence > hr (sourceFile) 1`] = `
+<p>Avant</p>
+<hr/>
+<p>Après</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > image-attachment (sourceFile) 1`] = `
+<ac:image><ri:attachment ri:filename="photo.png" /></ac:image>
+`;
+
+exports[`conversion golden-master > markdown → confluence > image-external (sourceFile) 1`] = `
+<ac:image><ri:url ri:value="https://example.com/x.png" /></ac:image>
+`;
+
+exports[`conversion golden-master > markdown → confluence > image-in-paragraph (sourceFile) 1`] = `
+<p>Avant <ac:image><ri:attachment ri:filename="a.png" /></ac:image> après.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > inline-br (sourceFile) 1`] = `
+<p>Ligne 1<br/>Ligne 2</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > inline-code (sourceFile) 1`] = `
+<p>Texte avec <code>code inline</code> ici.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > inline-del (sourceFile) 1`] = `
+<p>Texte <del>barré</del> et normal.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > inline-em (sourceFile) 1`] = `
+<p>Texte <em>italique</em> et normal.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > inline-escape (sourceFile) 1`] = `
+<p>Caractères échappés * _ # ici.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > inline-mixed (sourceFile) 1`] = `
+<p><strong>Gras</strong> <em>italique</em> <code>code</code> <del>barré</del> mélangés.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > inline-strong (sourceFile) 1`] = `
+<p>Texte <strong>gras</strong> et normal.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > jira-datasource-link (sourceFile) 1`] = `
+<p><a href="https://example.atlassian.net/issues/?jql=x" data-card-appearance="block"></a></p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > jira-datasource-link-no-emoji (sourceFile) 1`] = `
+<p><a href="https://example.atlassian.net/issues/?jql=x" data-card-appearance="block"></a></p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > jira-ticket-link (sourceFile + jira) 1`] = `
+<p>Voir <ac:structured-macro ac:name="jira" ac:schema-version="1">
+  <ac:parameter ac:name="key">DEP-918</ac:parameter>
+  <ac:parameter ac:name="serverId">ec6d1637-f9d6-3ae4-9d5e-9dce283383ea</ac:parameter>
+  <ac:parameter ac:name="server">System Jira</ac:parameter>
+</ac:structured-macro> ici.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > jira-ticket-link (sourceFile) 1`] = `
+<p>Voir <a href="https://example.atlassian.net/browse/DEP-918">DEP-918</a> ici.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > jira-ticket-link-noconfig (sourceFile) 1`] = `
+<p>Voir <a href="https://example.atlassian.net/browse/DEP-918">DEP-918</a> ici.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > link-anchor (sourceFile) 1`] = `
+<p>Voir <a href="#ma-section">section</a> ici.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > link-external (sourceFile) 1`] = `
+<p>Voir <a href="https://example.com">le site</a> ici.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > link-mailto (sourceFile) 1`] = `
+<p>Écrire à <a href="mailto:test@example.com">moi</a>.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > link-relative (sourceFile) 1`] = `
+<p>Voir <a href="https://gitlab.example.com/group/project/-/blob/develop/src/index.ts">le fichier</a> ici.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > link-relative-title-line (sourceFile) 1`] = `
+<p><a href="https://gitlab.example.com/group/project/-/blob/develop/src/index.ts#L42">code</a></p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > multiple-blank-lines (sourceFile) 1`] = `
+<p>Para 1</p>
+<p>Para 2</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > ol-nested (sourceFile) 1`] = `
+<ol>
+<li>Un<ol>
+<li>Un-a</li>
+<li>Un-b</li>
+</ol></li>
+<li>Deux</li>
+</ol>
+`;
+
+exports[`conversion golden-master > markdown → confluence > ol-simple (sourceFile) 1`] = `
+<ol>
+<li>Premier</li>
+<li>Deuxième</li>
+<li>Troisième</li>
+</ol>
+`;
+
+exports[`conversion golden-master > markdown → confluence > ol-start (sourceFile) 1`] = `
+<ol start="3">
+<li>Trois</li>
+<li>Quatre</li>
+</ol>
+`;
+
+exports[`conversion golden-master > markdown → confluence > only-whitespace (sourceFile) 1`] = `
+
+`;
+
+exports[`conversion golden-master > markdown → confluence > paragraph-simple (sourceFile) 1`] = `
+<p>Un paragraphe simple avec du texte.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > raw-html-color-span (sourceFile) 1`] = `
+<p>Texte <span style="color: rgb(255,86,48);">rouge</span> ici.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > raw-html-comment (sourceFile) 1`] = `
+<p>Avant  après.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > raw-html-preserved-macro (sourceFile) 1`] = `
+<p>Avant</p>
+<ac:structured-macro ac:name="native-embed:whiteboard"><ac:parameter ac:name="url">https://x/wb</ac:parameter></ac:structured-macro>
+<p>Après</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > raw-html-sub-sup (sourceFile) 1`] = `
+<p>H<sub>2</sub>O et x<sup>2</sup>.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > raw-html-table-code (sourceFile) 1`] = `
+<table><tbody><tr><td><ac:structured-macro ac:name="code">
+  <ac:parameter ac:name="language">python</ac:parameter>
+  <ac:plain-text-body><![CDATA[print(1)]]></ac:plain-text-body>
+</ac:structured-macro></td></tr></tbody></table>
+`;
+
+exports[`conversion golden-master > markdown → confluence > raw-html-table-complex (sourceFile + jira) 1`] = `
+<table><tbody><tr><td><ac:structured-macro ac:name="info">
+  <ac:rich-text-body><p>Volet info</p></ac:rich-text-body>
+</ac:structured-macro></td><td><p>texte <ac:structured-macro ac:name="jira" ac:schema-version="1">
+  <ac:parameter ac:name="key">DEP-918</ac:parameter>
+  <ac:parameter ac:name="serverId">ec6d1637-f9d6-3ae4-9d5e-9dce283383ea</ac:parameter>
+  <ac:parameter ac:name="server">System Jira</ac:parameter>
+</ac:structured-macro></p></td></tr></tbody></table>
+`;
+
+exports[`conversion golden-master > markdown → confluence > raw-html-table-complex (sourceFile) 1`] = `
+<table><tbody><tr><td><ac:structured-macro ac:name="info">
+  <ac:rich-text-body><p>Volet info</p></ac:rich-text-body>
+</ac:structured-macro></td><td><p>texte <a href="https://example.atlassian.net/browse/DEP-918">DEP-918</a></p></td></tr></tbody></table>
+`;
+
+exports[`conversion golden-master > markdown → confluence > raw-html-table-img (sourceFile) 1`] = `
+<table><tbody><tr><td><ac:image><ri:attachment ri:filename="x.png" /></ac:image></td><td><ac:image><ri:url ri:value="https://e.com/y.png" /></ac:image></td></tr></tbody></table>
+`;
+
+exports[`conversion golden-master > markdown → confluence > raw-html-table-tasklist (sourceFile) 1`] = `
+<table><tbody><tr><td><ac:task-list>
+<ac:task>
+  <ac:task-id>1</ac:task-id>
+  <ac:task-status>incomplete</ac:task-status>
+  <ac:task-body>Tache 1</ac:task-body>
+</ac:task>
+<ac:task>
+  <ac:task-id>2</ac:task-id>
+  <ac:task-status>complete</ac:task-status>
+  <ac:task-body>Tache 2</ac:task-body>
+</ac:task>
+<ac:task-list>
+<ac:task>
+  <ac:task-id>3</ac:task-id>
+  <ac:task-status>incomplete</ac:task-status>
+  <ac:task-body>Sous tache 1</ac:task-body>
+</ac:task>
+</ac:task-list>
+</ac:task-list></td></tr></tbody></table>
+`;
+
+exports[`conversion golden-master > markdown → confluence > raw-html-underline (sourceFile) 1`] = `
+<p>Texte <u>souligné</u> ici.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > table-align (sourceFile) 1`] = `
+<table>
+<thead><tr>
+<th style="text-align: left;">G</th>
+<th style="text-align: center;">C</th>
+<th style="text-align: right;">D</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align: left;">a</td>
+<td style="text-align: center;">b</td>
+<td style="text-align: right;">c</td>
+</tr>
+</tbody>
+</table>
+`;
+
+exports[`conversion golden-master > markdown → confluence > table-inline-content (sourceFile) 1`] = `
+<table>
+<thead><tr>
+<th><strong>Gras</strong></th>
+<th><code>code</code></th>
+</tr></thead>
+<tbody>
+<tr>
+<td><a href="https://x.com">lien</a></td>
+<td><em>it</em></td>
+</tr>
+</tbody>
+</table>
+`;
+
+exports[`conversion golden-master > markdown → confluence > table-simple (sourceFile) 1`] = `
+<table>
+<thead><tr>
+<th>A</th>
+<th>B</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>2</td>
+</tr>
+</tbody>
+</table>
+`;
+
+exports[`conversion golden-master > markdown → confluence > task-deep (sourceFile) 1`] = `
+<ac:task-list>
+<ac:task>
+  <ac:task-id>1</ac:task-id>
+  <ac:task-status>incomplete</ac:task-status>
+  <ac:task-body><span class="placeholder-inline-tasks">A</span></ac:task-body>
+</ac:task>
+<ac:task-list>
+<ac:task>
+  <ac:task-id>2</ac:task-id>
+  <ac:task-status>complete</ac:task-status>
+  <ac:task-body><span class="placeholder-inline-tasks">B</span></ac:task-body>
+</ac:task>
+<ac:task-list>
+<ac:task>
+  <ac:task-id>3</ac:task-id>
+  <ac:task-status>incomplete</ac:task-status>
+  <ac:task-body><span class="placeholder-inline-tasks">C</span></ac:task-body>
+</ac:task>
+</ac:task-list>
+</ac:task-list>
+</ac:task-list>
+`;
+
+exports[`conversion golden-master > markdown → confluence > task-nested (sourceFile) 1`] = `
+<ac:task-list>
+<ac:task>
+  <ac:task-id>1</ac:task-id>
+  <ac:task-status>incomplete</ac:task-status>
+  <ac:task-body><span class="placeholder-inline-tasks">Tache 1</span></ac:task-body>
+</ac:task>
+<ac:task>
+  <ac:task-id>2</ac:task-id>
+  <ac:task-status>complete</ac:task-status>
+  <ac:task-body><span class="placeholder-inline-tasks">Tache 2</span></ac:task-body>
+</ac:task>
+<ac:task-list>
+<ac:task>
+  <ac:task-id>3</ac:task-id>
+  <ac:task-status>incomplete</ac:task-status>
+  <ac:task-body><span class="placeholder-inline-tasks">Sous tache 1</span></ac:task-body>
+</ac:task>
+</ac:task-list>
+</ac:task-list>
+`;
+
+exports[`conversion golden-master > markdown → confluence > task-simple (sourceFile) 1`] = `
+<ac:task-list>
+<ac:task>
+  <ac:task-id>1</ac:task-id>
+  <ac:task-status>incomplete</ac:task-status>
+  <ac:task-body><span class="placeholder-inline-tasks">À faire</span></ac:task-body>
+</ac:task>
+<ac:task>
+  <ac:task-id>2</ac:task-id>
+  <ac:task-status>complete</ac:task-status>
+  <ac:task-body><span class="placeholder-inline-tasks">Fait</span></ac:task-body>
+</ac:task>
+</ac:task-list>
+`;
+
+exports[`conversion golden-master > markdown → confluence > ul-nested (sourceFile) 1`] = `
+<ul>
+<li>Niveau 1<ul>
+<li>Niveau 2<ul>
+<li>Niveau 3</li>
+</ul></li>
+</ul></li>
+</ul>
+`;
+
+exports[`conversion golden-master > markdown → confluence > ul-simple (sourceFile) 1`] = `
+<ul>
+<li>Item 1</li>
+<li>Item 2</li>
+<li>Item 3</li>
+</ul>
+`;
+
+exports[`conversion golden-master > markdown → confluence > ul-with-inline (sourceFile) 1`] = `
+<ul>
+<li><strong>Gras</strong> item</li>
+<li>Item avec <a href="https://x.com">lien</a></li>
+<li>Item avec <code>code</code></li>
+</ul>
+`;
+
+exports[`conversion golden-master > markdown → confluence > user-mention-link (sourceFile) 1`] = `
+<p>Merci de contacter <ac:link><ri:user ri:account-id="jdupont" /></ac:link> pour toute question.</p>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > color-span 1`] = `
+<p>Texte <span style="color: rgb(255,86,48);">rouge</span> ici.</p>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > del-underline 1`] = `
+<p>texte <del>barré</del> et <u>souligné</u>.</p>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > drawio-adf 1`] = `
+<div data-confluence-macro-preserved="1">&lt;ac:adf-extension&gt;&lt;ac:adf-node type="extension"&gt;&lt;ac:adf-attribute key="extension-key"&gt;1afdce52/static/drawio&lt;/ac:adf-attribute&gt;&lt;ac:adf-attribute key="extension-type"&gt;com.atlassian.ecosystem&lt;/ac:adf-attribute&gt;&lt;ac:adf-attribute key="text"&gt;Diagramme draw.io&lt;/ac:adf-attribute&gt;&lt;ac:adf-attribute key="layout"&gt;default&lt;/ac:adf-attribute&gt;&lt;ac:adf-attribute key="local-id"&gt;299deeb5&lt;/ac:adf-attribute&gt;&lt;/ac:adf-node&gt;&lt;ac:adf-fallback&gt;fallback&lt;/ac:adf-fallback&gt;&lt;/ac:adf-extension&gt;</div>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > drawio-classic 1`] = `
+<div data-confluence-macro-preserved="1">&lt;ac:structured-macro ac:name="drawio" ac:schema-version="1"&gt;&lt;ac:parameter ac:name="diagramName"&gt;mon-diagramme.drawio&lt;/ac:parameter&gt;&lt;/ac:structured-macro&gt;</div>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > generated-info-block 1`] = `
+<p>Contenu réel.</p>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > heading 1`] = `
+<h1>Titre 1</h1><h2>Titre 2</h2><h3>Titre 3</h3>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > hr-with-attrs 1`] = `
+<p>Avant</p><hr/><p>Après</p>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > image-attachment 1`] = `
+<img src="img/photo.png" alt="photo.png">
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > image-attachment-no-relpath 1`] = `
+<img src="photo.png" alt="photo.png">
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > image-url 1`] = `
+<img src="https://example.com/x.png" alt="">
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > jira-datasource-table 1`] = `
+<table><tbody><tr><td><p /><a href="https://example.atlassian.net/issues/?jql=text%20~%20%22DEP-918%22">Tableau Jira</a></td></tr></tbody></table>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > jira-inline-card 1`] = `
+<p>Ticket <a href="https://example.atlassian.net/browse/DEP-918">DEP-918</a> ici.</p>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > jira-macro-old 1`] = `
+<p>Ticket <a href="https://example.atlassian.net/browse/DEP-918">DEP-918</a> ici.</p>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > macro-code-entities 1`] = `
+<pre><code class="language-html">&lt;div&gt; &amp; &lt;/div&gt;</code></pre>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > macro-code-lang 1`] = `
+<pre><code class="language-python">print("hi")</code></pre>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > macro-code-no-lang 1`] = `
+<pre><code>texte brut</code></pre>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > macro-expand 1`] = `
+<blockquote data-macro-type="expand" data-macro-title="Développer"><p>Texte caché</p></blockquote>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > macro-info 1`] = `
+<blockquote data-macro-type="info"><p>Volet information</p></blockquote>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > macro-info-title 1`] = `
+<blockquote data-macro-type="info" data-macro-title="Mon titre"><p>Corps</p></blockquote>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > macro-note-warning-tip 1`] = `
+<blockquote data-macro-type="note"><p>Note</p></blockquote><blockquote data-macro-type="warning"><p>Warn</p></blockquote><blockquote data-macro-type="tip"><p>Tip</p></blockquote>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > nested-list-in-cell 1`] = `
+<table><tbody><tr><td><ul><li><p>Liste 1</p></li><li><p>Liste 2</p><ul><li><p>Sous liste 1</p></li></ul></li></ul></td></tr></tbody></table>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > ordered-list-in-cell 1`] = `
+<table><tbody><tr><td><ol start="1"><li><p>Numéro 1</p></li><li><p>Numéro 2</p><ol start="1"><li><p>Sous numero a</p></li></ol></li></ol></td></tr></tbody></table>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > paragraph-inline 1`] = `
+<p>Texte <strong>gras</strong> et <em>italique</em> et <code>code</code>.</p>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > status-macro-inline 1`] = `
+<p>Statut : <span data-confluence-status="Green" style="background-color:#E3FCEF;color:#006644;padding:2px 6px;border-radius:3px;font-weight:bold">DONE</span> validé.</p>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > status-macro-standalone 1`] = `
+<p><span data-confluence-status="Blue" style="background-color:#DEEBFF;color:#0747A6;padding:2px 6px;border-radius:3px;font-weight:bold">NEW</span></p>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > table-cell-multi-block 1`] = `
+<table><tbody><tr><td>para 1</p><p>para 2</td><td><blockquote data-macro-type="info"><p>info</p></blockquote></td></tr></tbody></table>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > table-cell-single-p 1`] = `
+<table><tbody><tr><th><strong>Table 1</strong></th><th><strong>Table 2</strong></th></tr><tr><td>elm 1</td><td>elm 2</td></tr></tbody></table>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > task-list-nested 1`] = `
+<div data-ac-task-list="1">
+<div data-ac-task="1" data-status="incomplete">Tache 1</div>
+<div data-ac-task="1" data-status="complete">Tache 2<div data-ac-task-list="1">
+<div data-ac-task="1" data-status="incomplete">Sous tache 1</div>
+</div></div>
+</div>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > task-list-simple 1`] = `
+<div data-ac-task-list="1">
+<div data-ac-task="1" data-status="incomplete">Tache 1</div>
+<div data-ac-task="1" data-status="complete">Tache 2</div>
+</div>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > task-list-uuid-formats 1`] = `
+<div data-ac-task-list="1">
+<div data-ac-task="1" data-status="incomplete">A</div>
+<div data-ac-task="1" data-status="complete">B</div>
+</div>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > time-datetime 1`] = `
+<p>Date : 📅 2026-06-15</p>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > time-no-datetime 1`] = `
+<p>Date : </p>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > time-self-closing 1`] = `
+<p>Date : 📅 2026-06-15</p>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > toc-macro 1`] = `
+<p>Après TOC.</p>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > toc-self-closing 1`] = `
+
+<p>Après TOC.</p>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > user-mention 1`] = `
+<p>Mention à </p>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > whiteboard-unknown-macro 1`] = `
+<div data-confluence-macro-preserved="1">&lt;ac:structured-macro ac:name="native-embed:whiteboard" ac:schema-version="1" ac:macro-id="d5f6f9bb"&gt;&lt;ac:parameter ac:name="alignment"&gt;center&lt;/ac:parameter&gt;&lt;ac:parameter ac:name="url"&gt;https://example.atlassian.net/wiki/spaces/DA/whiteboard/5874614331&lt;/ac:parameter&gt;&lt;ac:parameter ac:name="alwaysShowTitle"&gt;false&lt;/ac:parameter&gt;&lt;ac:parameter ac:name="height"&gt;600&lt;/ac:parameter&gt;&lt;/ac:structured-macro&gt;</div>
+`;
+
+exports[`conversion golden-master > round-trip (conf → md → conf) > drawio-adf - back (publish) 1`] = `
+<ac:adf-extension><ac:adf-node type="extension"><ac:adf-attribute key="extension-key">1afdce52/static/drawio</ac:adf-attribute><ac:adf-attribute key="extension-type">com.atlassian.ecosystem</ac:adf-attribute><ac:adf-attribute key="text">Diagramme draw.io</ac:adf-attribute><ac:adf-attribute key="layout">default</ac:adf-attribute><ac:adf-attribute key="local-id">299deeb5</ac:adf-attribute></ac:adf-node><ac:adf-fallback>fallback</ac:adf-fallback></ac:adf-extension>
+`;
+
+exports[`conversion golden-master > round-trip (conf → md → conf) > drawio-adf - md (pull) 1`] = `
+<div data-confluence-macro="PGFjOmFkZi1leHRlbnNpb24+PGFjOmFkZi1ub2RlIHR5cGU9ImV4dGVuc2lvbiI+PGFjOmFkZi1hdHRyaWJ1dGUga2V5PSJleHRlbnNpb24ta2V5Ij4xYWZkY2U1Mi9zdGF0aWMvZHJhd2lvPC9hYzphZGYtYXR0cmlidXRlPjxhYzphZGYtYXR0cmlidXRlIGtleT0iZXh0ZW5zaW9uLXR5cGUiPmNvbS5hdGxhc3NpYW4uZWNvc3lzdGVtPC9hYzphZGYtYXR0cmlidXRlPjxhYzphZGYtYXR0cmlidXRlIGtleT0idGV4dCI+RGlhZ3JhbW1lIGRyYXcuaW88L2FjOmFkZi1hdHRyaWJ1dGU+PGFjOmFkZi1hdHRyaWJ1dGUga2V5PSJsYXlvdXQiPmRlZmF1bHQ8L2FjOmFkZi1hdHRyaWJ1dGU+PGFjOmFkZi1hdHRyaWJ1dGUga2V5PSJsb2NhbC1pZCI+Mjk5ZGVlYjU8L2FjOmFkZi1hdHRyaWJ1dGU+PC9hYzphZGYtbm9kZT48YWM6YWRmLWZhbGxiYWNrPmZhbGxiYWNrPC9hYzphZGYtZmFsbGJhY2s+PC9hYzphZGYtZXh0ZW5zaW9uPg=="></div>
+`;
+
+exports[`conversion golden-master > round-trip (conf → md → conf) > status-macro-inline - back (publish) 1`] = `
+<p>Statut : <ac:structured-macro ac:name="status" ac:schema-version="1">
+  <ac:parameter ac:name="title">DONE</ac:parameter>
+  <ac:parameter ac:name="colour">Green</ac:parameter>
+</ac:structured-macro> validé.</p>
+`;
+
+exports[`conversion golden-master > round-trip (conf → md → conf) > status-macro-inline - md (pull) 1`] = `
+Statut : <span data-confluence-status="Green" style="background-color:#E3FCEF;color:#006644;padding:2px 6px;border-radius:3px;font-weight:bold">DONE</span> validé.
+`;
+
+exports[`conversion golden-master > round-trip (conf → md → conf) > status-macro-standalone - back (publish) 1`] = `
+<p><ac:structured-macro ac:name="status" ac:schema-version="1">
+  <ac:parameter ac:name="title">NEW</ac:parameter>
+  <ac:parameter ac:name="colour">Blue</ac:parameter>
+</ac:structured-macro></p>
+`;
+
+exports[`conversion golden-master > round-trip (conf → md → conf) > status-macro-standalone - md (pull) 1`] = `
+<span data-confluence-status="Blue" style="background-color:#DEEBFF;color:#0747A6;padding:2px 6px;border-radius:3px;font-weight:bold">NEW</span>
+`;
+
+exports[`conversion golden-master > round-trip (conf → md → conf) > whiteboard-unknown-macro - back (publish) 1`] = `
+<ac:structured-macro ac:name="native-embed:whiteboard" ac:schema-version="1" ac:macro-id="d5f6f9bb"><ac:parameter ac:name="alignment">center</ac:parameter><ac:parameter ac:name="url">https://example.atlassian.net/wiki/spaces/DA/whiteboard/5874614331</ac:parameter><ac:parameter ac:name="alwaysShowTitle">false</ac:parameter><ac:parameter ac:name="height">600</ac:parameter></ac:structured-macro>
+`;
+
+exports[`conversion golden-master > round-trip (conf → md → conf) > whiteboard-unknown-macro - md (pull) 1`] = `
+<div data-confluence-macro="PGFjOnN0cnVjdHVyZWQtbWFjcm8gYWM6bmFtZT0ibmF0aXZlLWVtYmVkOndoaXRlYm9hcmQiIGFjOnNjaGVtYS12ZXJzaW9uPSIxIiBhYzptYWNyby1pZD0iZDVmNmY5YmIiPjxhYzpwYXJhbWV0ZXIgYWM6bmFtZT0iYWxpZ25tZW50Ij5jZW50ZXI8L2FjOnBhcmFtZXRlcj48YWM6cGFyYW1ldGVyIGFjOm5hbWU9InVybCI+aHR0cHM6Ly9leGFtcGxlLmF0bGFzc2lhbi5uZXQvd2lraS9zcGFjZXMvREEvd2hpdGVib2FyZC81ODc0NjE0MzMxPC9hYzpwYXJhbWV0ZXI+PGFjOnBhcmFtZXRlciBhYzpuYW1lPSJhbHdheXNTaG93VGl0bGUiPmZhbHNlPC9hYzpwYXJhbWV0ZXI+PGFjOnBhcmFtZXRlciBhYzpuYW1lPSJoZWlnaHQiPjYwMDwvYWM6cGFyYW1ldGVyPjwvYWM6c3RydWN0dXJlZC1tYWNybz4="></div>
+`;

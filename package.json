@@ -1,0 +1,98 @@
+{
+  "name": "codoc-cli",
+  "displayName": "codoc-cli",
+  "description": "Synchronisation de documentation Confluence <-> code (Markdown <-> Confluence)",
+  "version": "0.1.0",
+  "author": "CDA - Klee",
+  "bin": {
+    "codoc": "bin/run.js"
+  },
+  "bugs": "https://github.com/klee-contrib/codoc/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/klee-contrib/codoc.git"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^8.2.0",
+    "@oclif/core": "^4",
+    "@puppeteer/browsers": "^2.13.2",
+    "@oclif/plugin-autocomplete": "^3.2.40",
+    "@oclif/plugin-help": "^6",
+    "@oclif/plugin-version": "^2.2.36",
+    "dotenv": "^17.4.2",
+    "execa": "^9.6.1",
+    "js-yaml": "^4.2.0",
+    "ky": "^1.14.2",
+    "marked": "^11.1.1",
+    "ora": "^9.0.0",
+    "puppeteer": "^24",
+    "simple-git": "^3.30.0",
+    "turndown": "^7.1.2",
+    "turndown-plugin-gfm": "^1.0.2"
+  },
+  "devDependencies": {
+    "@oclif/prettier-config": "0.2.1",
+    "@oclif/test": "^4.1.18",
+    "@types/js-yaml": "^4.0.9",
+    "@types/marked": "^6.0.0",
+    "@types/node": "^24",
+    "@types/turndown": "^5.0.2",
+    "c8": "^11.0.0",
+    "oclif": "^4.23.7",
+    "oxlint": "1.65.0",
+    "shx": "^0.4.0",
+    "ts-node": "^10.9.2",
+    "tsdown": "^0.22.0",
+    "typescript": "6.0.3"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "files": [
+    "./bin",
+    "./dist",
+    "./assets",
+    "./oclif.manifest.json"
+  ],
+  "homepage": "https://github.com/klee-contrib/codoc",
+  "keywords": [
+    "oclif"
+  ],
+  "license": "MIT",
+  "main": "dist/index.js",
+  "type": "module",
+  "oclif": {
+    "bin": "codoc",
+    "dirname": "codoc",
+    "commands": "./dist/commands",
+    "plugins": [
+      "@oclif/plugin-help",
+      "@oclif/plugin-autocomplete",
+      "@oclif/plugin-version"
+    ],
+    "topicSeparator": " ",
+    "hooks": {
+      "init": [
+        "./dist/hooks/init/load-env",
+        "./dist/hooks/init/check-for-update"
+      ],
+      "command_not_found": "./dist/hooks/command_not_found"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint",
+    "lint-fix": "oxlint --fix",
+    "prepack": "tsdown && oclif manifest",
+    "postpack": "shx rm -f oclif.manifest.json",
+    "posttest": "npm run lint",
+    "test": "node --import ./test/register.mjs --test \"test/**/*.test.ts\"",
+    "test:update-snapshots": "node --import ./test/register.mjs --test --test-update-snapshots \"test/**/*.test.ts\"",
+    "test:junit": "shx mkdir -p test-results && node --import ./test/register.mjs --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=./test-results/junit.xml \"test/**/*.test.ts\"",
+    "test:coverage": "c8 node --import ./test/register.mjs --test \"test/**/*.test.ts\"",
+    "test:ci": "shx mkdir -p test-results && c8 node --import ./test/register.mjs --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=./test-results/junit.xml \"test/**/*.test.ts\"",
+    "coverage:report": "c8 --reporter=lcov node --import ./test/register.mjs --test \"test/**/*.test.ts\""
+  },
+  "types": "dist/index.d.ts"
+}
