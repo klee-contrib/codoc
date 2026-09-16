@@ -5,7 +5,14 @@ Toutes les modifications notables de ce projet sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et ce projet suit le
 [Semantic Versioning](https://semver.org/lang/fr/).
 
-## [Non publié]
+## [0.2.1] - 2026-09-14
+
+### Ajouté
+
+- Extraits Confluence réutilisables (« excerpt ») : un bloc markdown délimité par `<!-- excerpt -->`
+  et `<!-- /excerpt -->` (ou `<!-- excerpt:nom -->` pour un extrait nommé) est publié comme une macro
+  `excerpt`, incluable ailleurs via `Excerpt Include`. La republication de la page source (mise à jour
+  en place, même pageId) ne casse pas les inclusions posées sur d'autres pages.
 
 ## [0.2.0] - 2026-09-14
 

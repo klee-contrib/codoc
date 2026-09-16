@@ -6,6 +6,7 @@ import {escapeXml} from '../shared/xml-escaping.js'
 import {renderTokens} from './render/blocks.js'
 import {ConversionOptions, beginConversion, endConversion} from './conversion-state.js'
 import {DrawioAttachment, manageMermaidsInMarkdownFile} from './diagrams/mermaid-diagrams.js'
+import {manageExcerptsInMarkdown} from './excerpts.js'
 import {buildConfluencePage} from './render/page.js'
 
 export type {ConversionOptions} from './conversion-state.js'
@@ -41,10 +42,16 @@ function cleanup(xml: string): string {
     .trim()
 }
 
+/** Rendu markdown → XML d'un fragment (contenu d'un extrait), sans toucher l'état de conversion en cours. */
+function renderFragment(markdown: string): string {
+  return cleanup(renderTokens(marked.lexer(markdown, {gfm: true})))
+}
+
 export function convertMarkdownToConfluence(markdown: string, options?: ConversionOptions): string {
   beginConversion(options ?? {})
   try {
-    const tokens = marked.lexer(markdown, {gfm: true})
+    const withExcerpts = manageExcerptsInMarkdown(markdown, renderFragment)
+    const tokens = marked.lexer(withExcerpts, {gfm: true})
     return restoreSpecialElements(restoreStatusMacros(cleanup(renderTokens(tokens))))
   } finally {
     endConversion()

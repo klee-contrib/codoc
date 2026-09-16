@@ -7,3 +7,7 @@ export const PRESERVED_MACRO_ATTR = "data-confluence-macro-preserved";
 export function preserveAsSentinel(xml: string): string {
   return `<div ${PRESERVED_MACRO_ATTR}="1">${escapeXml(xml)}</div>`;
 }
+
+export function preserveRichContentAsSentinel(xml: string): string {
+  return `<div data-confluence-macro="${Buffer.from(xml, "utf-8").toString("base64")}"></div>`;
+}
