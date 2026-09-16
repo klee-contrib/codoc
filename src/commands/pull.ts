@@ -12,15 +12,12 @@ export default class Pull extends Command {
 
   static args = {
     page: Args.string({
-      description: 'URL ou ID de la page Confluence à importer',
+      description: 'URL de la page Confluence à importer',
       required: false,
     }),
   }
 
   static flags = {
-    env: Flags.string({
-      description: 'Environnement Confluence où chercher la page. Par défaut : déduit de l’URL, sinon auto/prompt.',
-    }),
     'as-folder': Flags.boolean({
       allowNo: true,
       description:
@@ -36,7 +33,7 @@ export default class Pull extends Command {
     'in-config': Flags.boolean({
       allowNo: true,
       description:
-        "Ajoute (ou met à jour) l'entrée codoc.yaml de cette doc. --no-in-config importe sans toucher ni à " +
+        "Ajoute l'entrée codoc.yaml de cette doc. --no-in-config importe sans toucher ni à " +
         'codoc.yaml ni à codoc.lock (import ponctuel, non suivi par `codoc sync`). ' +
         'Non fourni : demande en fin de commande.',
     }),
@@ -45,9 +42,6 @@ export default class Pull extends Command {
     }),
     title: Flags.string({
       description: 'Titre de la page Confluence (page unique). Par défaut : celui de la config existante, sinon le titre Confluence.',
-    }),
-    'parent-page-id': Flags.string({
-      description: 'parentPageId Confluence. Par défaut : celui de la config existante, sinon le parent réel de la page.',
     }),
     'maintained-in': Flags.string({
       options: ['code', 'confluence'],
@@ -65,13 +59,11 @@ export default class Pull extends Command {
 
     await pull({
       page: args.page,
-      env: flags.env,
       asFolder: flags['as-folder'],
       keepExisting: flags['keep-existing'],
       inConfig: flags['in-config'],
       localPath: flags['local-path'],
       title: flags.title,
-      parentPageId: flags['parent-page-id'],
       maintainedIn: flags['maintained-in'],
       imagesDir: flags['images-dir'],
     })

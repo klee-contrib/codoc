@@ -30,7 +30,6 @@ export interface SyncEntry {
   parentPageId?: string
   title?: string
   titlePrefix?: string
-  titleSuffix?: string
   imagesDir?: string
 }
 
@@ -59,7 +58,6 @@ export function buildSyncEntries(config: AppConfig): SyncEntry[] {
       parentPageId: doc.confluence.parentPageId ?? env.defaultParentPageId,
       title: doc.confluence.title,
       titlePrefix: doc.confluence.titlePrefix,
-      titleSuffix: doc.confluence.titleSuffix,
       imagesDir: doc.imagesDir,
     }
   })

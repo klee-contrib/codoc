@@ -1,4 +1,5 @@
 import {DrawioConfig} from '../../../../types/codoc-types.js'
+import {log} from '../../../log/logger.js'
 import {preserveAsSentinel} from '../../shared/preserved-macros.js'
 import {structuredMacro} from '../../shared/confluence-macro-builder.js'
 import {toGitlabFileUrl} from '../../shared/gitlab-url.js'
@@ -45,12 +46,13 @@ export function manageMermaidsInMarkdownFile(
       /<a href='([^']*)'>/g,
       (_full, href: string) => `<a href='${toGitlabFileUrl(href, sourceFile, gitlab)}'>`,
     )
-    const content = mermaidToDrawio(mermaidSrc, diagramName, {
+    const {xml: content, warnings} = mermaidToDrawio(mermaidSrc, diagramName, {
       edgeStyle: cfg.edgeStyle,
       edgeAnchor: cfg.edgeAnchor,
       colWidth: cfg.colWidth,
       rowStep: cfg.rowStep,
     })
+    for (const w of warnings) log.warning2(`${sourceFile} (${diagramName}) : ${w}`)
     attachments.push({filename, content})
 
     const sentinel = preserveAsSentinel(buildDrawioMacro(filename, cfg))

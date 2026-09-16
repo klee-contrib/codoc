@@ -31,6 +31,11 @@ atlassian:
 #   serverId: ec6d1637-f9d6-3ae4-9d5e-9dce283383ea
 #   server: System Jira
 
+# codoc vérifie au lancement de chaque commande interactive si une version plus récente existe sur
+# npm et propose de mettre à jour automatiquement (jamais en CI, ni en sortie non-interactive).
+# Désactive complètement cette vérification.
+# autoUpdate: false
+
 docs:
   - codocId: ${codocId}        # identifiant stable (lien yaml ↔ codoc.lock) - unique, ne pas réutiliser
     path: ${docRelPath}
@@ -48,6 +53,5 @@ docs:
       title: Guide codoc
       # parentPageId: "TODO"   # surcharge defaultParentPageId pour cette page uniquement
       # titlePrefix: "[DRAFT] "
-      # titleSuffix: " (auto)"
 `
 }

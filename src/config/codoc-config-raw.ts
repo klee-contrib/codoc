@@ -59,7 +59,6 @@ export interface RawDocEntry {
     title?: string;
     parentPageId?: string | number;
     titlePrefix?: string;
-    titleSuffix?: string;
   };
 }
 
@@ -69,6 +68,7 @@ export interface RawCodocConfig {
   drawio?: RawDrawio;
   gitlab?: RawGitLab;
   docs?: RawDocEntry[];
+  autoUpdate?: boolean;
 }
 
 let cache: RawCodocConfig | undefined;
@@ -81,4 +81,10 @@ export function loadRawConfig(options: {required?: boolean} = {}): RawCodocConfi
   }
   cache = (yaml.load(readFile(CONFIG_PATH)) as RawCodocConfig) ?? {};
   return cache;
+}
+
+/** À appeler après toute écriture de codoc.yaml en cours de process (ex. ajout d'un environnement ad-hoc),
+ * pour qu'un prochain appel relise le fichier au lieu de servir l'état pré-écriture. */
+export function resetConfigCache(): void {
+  cache = undefined;
 }

@@ -1,5 +1,6 @@
 import readline from "readline/promises";
 import { stdin as input, stdout as output } from "process";
+import { checkbox } from "@inquirer/prompts";
 
 export type Rl = readline.Interface;
 
@@ -39,4 +40,31 @@ export async function resolveConfirm(
   opts: {flag?: boolean; question: string; default: boolean},
 ): Promise<boolean> {
   return opts.flag ?? (await confirm(rl, opts.question, opts.default));
+}
+
+export interface MultiSelectChoice<T extends string = string> {
+  value: T;
+  label: string;
+  description?: string;
+}
+
+/**
+ * Sélection multiple interactive (0..n), avec description affichée par choix. Contrairement à
+ * ask/confirm/resolveValue ci-dessus, ne prend pas de `Rl` : @inquirer/prompts pilote lui-même le
+ * terminal (mode raw) et ne peut pas partager un readline.Interface déjà ouvert - n'appelle donc
+ * jamais cette fonction pendant qu'un `Rl` créé par `createRl()` est actif.
+ */
+export async function selectMultiple<T extends string>(
+  message: string,
+  choices: MultiSelectChoice<T>[],
+): Promise<T[]> {
+  return checkbox<T>({
+    choices: choices.map((c) => ({
+      checked: false,
+      name: c.description ? `${c.label} — ${c.description}` : c.label,
+      value: c.value,
+    })),
+    loop: false,
+    message,
+  });
 }

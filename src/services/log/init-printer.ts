@@ -1,4 +1,3 @@
-import {AgentMdResult} from '../../use-cases/init/init.js'
 import {ansi, log} from './logger.js'
 
 export function printInitSummary(created: string[], skipped: string[], warnings: string[], docRelPath: string): void {
@@ -34,21 +33,5 @@ export function printInitSummary(created: string[], skipped: string[], warnings:
   log.raw(`       → publie ${ansi.cyan(docRelPath)} sur Confluence`)
   log.blank()
   log.info0(ansi.dim(`Guide complet généré dans ${docRelPath}`))
-  log.blank()
-}
-
-export function printAgentMdSummary(result: AgentMdResult): void {
-  log.startProcess("Génération de l'agent-md")
-
-  if (result.created.length) {
-    log.info0('Fichier généré :')
-    for (const f of result.created) log.success2(`[CREATED] ${f}`)
-  }
-  if (result.warnings.length) {
-    log.blank()
-    log.warning0('À regarder :')
-    for (const w of result.warnings) log.warning2(w)
-  }
-
   log.blank()
 }

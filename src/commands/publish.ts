@@ -18,21 +18,34 @@ export default class Publish extends Command {
   }
 
   static flags = {
-    env: Flags.string({
-      description: 'Environnement Confluence cible (clé). Par défaut : celui de la config existante, sinon auto/prompt.',
-    }),
     'in-config': Flags.boolean({
       allowNo: true,
       description:
-        "Ajoute (ou met à jour) l'entrée codoc.yaml de cette doc. --no-in-config publie sans toucher ni à " +
+        "Ajoute l'entrée codoc.yaml de cette doc. --no-in-config publie sans toucher ni à " +
         'codoc.yaml ni à codoc.lock (publication ponctuelle, non suivie par `codoc sync`). ' +
         'Non fourni : demande en fin de commande.',
     }),
-    'parent-page-id': Flags.string({
-      description: 'parentPageId Confluence cible. Par défaut : celui de la config existante ou defaultParentPageId de l’env.',
+    'keep-existing': Flags.boolean({
+      allowNo: true,
+      description:
+        "Si une entrée codoc.yaml existe déjà pour ce chemin, la met à jour en place (--keep-existing, " +
+        'valeurs existantes comme défauts) ou en crée une séparée (--no-keep-existing). ' +
+        'Non fourni : demande le cas échéant.',
+    }),
+    'parent-page': Flags.string({
+      description:
+        'URL de la page Confluence parente cible ("" pour aucun parent). Par défaut : celle de la config ' +
+        'existante, sinon prompt. L’environnement est déduit de son domaine.',
     }),
     title: Flags.string({
       description: 'Titre de la page Confluence (fichier unique uniquement). Par défaut : celui de la config existante, sinon le H1 du fichier.',
+    }),
+    'maintained-in': Flags.string({
+      options: ['code', 'confluence'],
+      description:
+        'Source de vérité enregistrée pour les prochains `codoc sync` : code → le .md local fait foi ; ' +
+        'confluence → la page fait foi. Par défaut : code. N’affecte pas cette publication elle-même ' +
+        '(toujours un envoi local → Confluence).',
     }),
   }
 
@@ -42,10 +55,11 @@ export default class Publish extends Command {
     await ensureEnvVars(confluenceEnvRequirements(loadRawConfig().atlassian?.environments))
 
     await publish(args.path ?? '', {
-      env: flags.env,
       inConfig: flags['in-config'],
-      parentPageId: flags['parent-page-id'],
+      keepExisting: flags['keep-existing'],
+      parentPage: flags['parent-page'],
       title: flags.title,
+      maintainedIn: flags['maintained-in'],
     })
   }
 }

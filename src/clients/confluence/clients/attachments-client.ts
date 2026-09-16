@@ -83,8 +83,7 @@ export class ConfluenceAttachmentsClient {
   }
 
   /**
-   * Upload ou remplace
-   * une pièce jointe.
+   * Upload ou remplace une pièce jointe.
    */
   async upload(pageId: string, filename: string, blob: Blob): Promise<void> {
     const existing = await this.find(pageId, filename)
@@ -106,8 +105,7 @@ export class ConfluenceAttachmentsClient {
   }
 
   /**
-   * Télécharge directement
-   * le texte d'un attachment.
+   * Télécharge directement le texte d'un attachment.
    */
   async downloadTextV1(downloadPath: string): Promise<string> {
     return this.http.v1

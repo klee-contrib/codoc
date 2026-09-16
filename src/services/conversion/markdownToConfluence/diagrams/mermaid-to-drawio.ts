@@ -20,11 +20,18 @@ interface Group {
   title: string
 }
 
+interface Edge {
+  from: string
+  to: string
+  label?: string
+}
+
 interface ParsedGraph {
   groups: Group[]
   nodes: Node[]
-  edges: Array<[string, string]>
+  edges: Edge[]
   direction: string // LR | RL | TB | TD | BT
+  droppedEdges: string[]
 }
 
 // ════════════════════════════ Parse ════════════════════════════
@@ -34,6 +41,8 @@ const RE_SUBGRAPH = /^subgraph\s+(\w+)(?:\["([^"]*)"\])?/
 const RE_NODE_STADIUM = /^(\w+)\(\["([\s\S]*)"\]\)$/
 const RE_NODE_RECT = /^(\w+)\["([\s\S]*)"\]$/
 const RE_EDGE = /^(\w+)\s*-->\s*(\w+)$/
+const RE_EDGE_PIPE_LABEL = /^(\w+)\s*-->\s*\|([^|]*)\|\s*(\w+)$/
+const RE_EDGE_MID_LABEL = /^(\w+)\s*--(?!>)\s*(.+?)\s*-->\s*(\w+)$/
 const RE_CLICK = /^click\s+(\w+)\s+href\s+"([^"]+)"/
 const RE_STYLE = /^style\s+(\w+)\s+(.+)$/
 const RE_CLASS_DEF = /^classDef\s+(\w+)\s+(.+)$/
@@ -52,7 +61,8 @@ function parseFillStroke(directive: string): FillStroke {
 function parseMermaid(mermaid: string): ParsedGraph {
   const groups: Group[] = []
   const nodes: Node[] = []
-  const edges: Array<[string, string]> = []
+  const edges: Edge[] = []
+  const unparsedEdgeLines: string[] = []
   const links = new Map<string, string>()
   const styles = new Map<string, FillStroke>()
   const classDefs = new Map<string, FillStroke>()
@@ -113,9 +123,17 @@ function parseMermaid(mermaid: string): ParsedGraph {
       continue
     }
 
+    const pipeLabel = line.match(RE_EDGE_PIPE_LABEL)
+    const midLabel = pipeLabel ? null : line.match(RE_EDGE_MID_LABEL)
+    const labelled = pipeLabel ?? midLabel
+    if (labelled) {
+      edges.push({from: labelled[1], to: labelled[3], label: labelled[2].trim() || undefined})
+      continue
+    }
+
     const edge = line.match(RE_EDGE)
     if (edge) {
-      edges.push([edge[1], edge[2]])
+      edges.push({from: edge[1], to: edge[2]})
       continue
     }
 
@@ -126,6 +144,11 @@ function parseMermaid(mermaid: string): ParsedGraph {
       const node: Node = {id: m[1], label: m[2], shape: stadium ? 'stadium' : 'rect', group: currentGroup}
       nodes.push(node)
       nodeById.set(node.id, node)
+      continue
+    }
+
+    if (line.includes('-->')) {
+      unparsedEdgeLines.push(line)
     }
   }
 
@@ -143,9 +166,18 @@ function parseMermaid(mermaid: string): ParsedGraph {
   }
 
   const known = new Set(nodes.map((n) => n.id))
-  const validEdges = edges.filter(([a, b]) => known.has(a) && known.has(b))
+  const validEdges = edges.filter((e) => known.has(e.from) && known.has(e.to))
+  const droppedEdges = [
+    ...edges
+      .filter((e) => !(known.has(e.from) && known.has(e.to)))
+      .map((e) => {
+        const missing = [e.from, e.to].filter((id) => !known.has(id))
+        return `arête "${e.from} --> ${e.to}" ignorée : nœud(s) non déclaré(s) (${missing.join(', ')}) - déclarez-les avec ${missing[0]}["label"]`
+      }),
+    ...unparsedEdgeLines.map((line) => `ligne ignorée (syntaxe d'arête non reconnue, ex. arêtes chaînées ou label avec "|") : "${line}"`),
+  ]
 
-  return {groups, nodes, edges: validEdges, direction}
+  return {groups, nodes, edges: validEdges, direction, droppedEdges}
 }
 
 // ════════════════════════════ Layout ════════════════════════════
@@ -179,11 +211,11 @@ type Pos = {x: number; y: number}
 type Adjacency = Map<string, string[]>
 
 /** Listes d'adjacence (parents / enfants) du graphe, restreintes aux nœuds connus. */
-function buildAdjacency(nodes: Node[], edges: Array<[string, string]>): {preds: Adjacency; succs: Adjacency} {
+function buildAdjacency(nodes: Node[], edges: Edge[]): {preds: Adjacency; succs: Adjacency} {
   const idSet = new Set(nodes.map((n) => n.id))
   const preds: Adjacency = new Map(nodes.map((n) => [n.id, []]))
   const succs: Adjacency = new Map(nodes.map((n) => [n.id, []]))
-  for (const [from, to] of edges) {
+  for (const {from, to} of edges) {
     if (!idSet.has(from) || !idSet.has(to)) continue
     succs.get(from)!.push(to)
     preds.get(to)!.push(from)
@@ -270,7 +302,7 @@ function columnPositions(nodes: Node[], lo: DrawioLayout): Map<string, Pos> {
 /** Mode cascade : placement par niveaux (parents à gauche, enfants à droite en LR). */
 function levelPositions(
   nodes: Node[],
-  edges: Array<[string, string]>,
+  edges: Edge[],
   direction: string,
   lo: DrawioLayout,
 ): Map<string, Pos> {
@@ -376,21 +408,31 @@ function titleCell(group: Group, gi: number, lo: DrawioLayout): string {
   ].join('\n')
 }
 
-function edgeCell(source: string, target: string, i: number, style: string): string {
+function edgeCell(source: string, target: string, i: number, style: string, label?: string): string {
+  const value = label ? ` value="${escapeAttr(label)}"` : ''
   return [
-    `        <mxCell id="e${i}" style="${style}" edge="1" parent="1" source="${source}" target="${target}">`,
+    `        <mxCell id="e${i}"${value} style="${style}" edge="1" parent="1" source="${source}" target="${target}">`,
     `          <mxGeometry relative="1" as="geometry" />`,
     `        </mxCell>`,
   ].join('\n')
 }
 
-export function mermaidToDrawio(mermaid: string, diagramName = 'diagram', layout: Partial<DrawioLayout> = {}): string {
+export interface MermaidToDrawioResult {
+  xml: string
+  warnings: string[]
+}
+
+export function mermaidToDrawio(
+  mermaid: string,
+  diagramName = 'diagram',
+  layout: Partial<DrawioLayout> = {},
+): MermaidToDrawioResult {
   const lo: DrawioLayout = {
     ...DEFAULT_LAYOUT,
     ...cleanLayout(layout),
   }
 
-  const {groups, nodes, edges, direction} = parseMermaid(mermaid)
+  const {groups, nodes, edges, direction, droppedEdges} = parseMermaid(mermaid)
 
   // Subgraphs → colonnes par groupe (+ titres) ; sinon → cascade par niveaux.
   const positions = groups.length ? columnPositions(nodes, lo) : levelPositions(nodes, edges, direction, lo)
@@ -401,9 +443,9 @@ export function mermaidToDrawio(mermaid: string, diagramName = 'diagram', layout
     cells.push(nodeCell(node, positions.get(node.id) ?? {x: MARGIN, y: MARGIN}, lo))
   }
   const edgeStyle = edgeRouting(lo.edgeStyle) + edgeAnchorStyle(lo.edgeAnchor, direction)
-  edges.forEach(([a, b], i) => cells.push(edgeCell(a, b, i, edgeStyle)))
+  edges.forEach((e, i) => cells.push(edgeCell(e.from, e.to, i, edgeStyle, e.label)))
 
-  return [
+  const xml = [
     `<mxfile host="app.diagrams.net" type="device">`,
     `  <diagram id="${escapeAttr(diagramName)}" name="${escapeAttr(diagramName)}">`,
     `    <mxGraphModel dx="1200" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="826" math="0" shadow="0">`,
@@ -416,4 +458,6 @@ export function mermaidToDrawio(mermaid: string, diagramName = 'diagram', layout
     `  </diagram>`,
     `</mxfile>`,
   ].join('\n')
+
+  return {xml, warnings: droppedEdges}
 }

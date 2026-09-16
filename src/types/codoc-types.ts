@@ -18,7 +18,6 @@ export interface DocEntryConfig {
     title?: string
     parentPageId?: string
     titlePrefix?: string
-    titleSuffix?: string
   }
 }
 

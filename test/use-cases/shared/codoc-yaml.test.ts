@@ -1,7 +1,24 @@
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
 import {describe, it} from 'node:test'
 
-import {buildYamlEntry, removeEntriesFromYaml} from '../../../src/use-cases/shared/codoc-yaml.js'
+import {loadRawConfig, resetConfigCache} from '../../../src/config/codoc-config-raw.js'
+import {CONFIG_PATH} from '../../../src/config/codoc-paths.js'
+import {addAtlassianEnvironment, buildYamlEntry, removeEntriesFromYaml} from '../../../src/use-cases/shared/codoc-yaml.js'
+
+async function withConfigFile<T>(initialContent: string | undefined, run: () => Promise<T>): Promise<T> {
+  const existed = fs.existsSync(CONFIG_PATH)
+  const previous = existed ? fs.readFileSync(CONFIG_PATH, 'utf8') : undefined
+  if (initialContent !== undefined) fs.writeFileSync(CONFIG_PATH, initialContent)
+  else fs.rmSync(CONFIG_PATH, {force: true})
+
+  try {
+    return await run()
+  } finally {
+    if (existed) fs.writeFileSync(CONFIG_PATH, previous!)
+    else fs.rmSync(CONFIG_PATH, {force: true})
+  }
+}
 
 describe('codoc-yaml', () => {
   describe('buildYamlEntry', () => {
@@ -74,6 +91,68 @@ describe('codoc-yaml', () => {
       const out = removeEntriesFromYaml(content, ['doc/missing.md'])
       assert.ok(out.includes('doc/a.md'))
       assert.ok(out.includes('doc/b.md'))
+    })
+  })
+
+  describe('addAtlassianEnvironment', () => {
+    it("crée codoc.yaml s'il est absent", async () => {
+      await withConfigFile(undefined, async () => {
+        const result = await addAtlassianEnvironment('kleegroup', 'https://kleegroup.atlassian.net', 'DA')
+        assert.strictEqual(result, 'created')
+        const content = fs.readFileSync(CONFIG_PATH, 'utf8').replace(/\r\n/g, '\n')
+        assert.match(content, /^atlassian:\n {2}environments:\n {4}kleegroup:\n {6}baseUrl: https:\/\/kleegroup\.atlassian\.net\n {6}spaceKey: DA\n/)
+      })
+    })
+
+    it('insère sous `atlassian:\\n  environments:\\n` existant, sans toucher au reste du fichier (docs: notamment)', async () => {
+      const existing = 'atlassian:\n  environments:\n    default:\n      baseUrl: https://acme.atlassian.net\n      spaceKey: AC\n\ndocs:\n  - path: doc/a.md\n'
+      await withConfigFile(existing, async () => {
+        const result = await addAtlassianEnvironment('acme2', 'https://acme2.atlassian.net', 'AC2')
+        assert.strictEqual(result, 'inserted')
+        const content = fs.readFileSync(CONFIG_PATH, 'utf8').replace(/\r\n/g, '\n')
+        assert.match(content, /environments:\n {4}acme2:\n {6}baseUrl: https:\/\/acme2\.atlassian\.net\n {6}spaceKey: AC2\n {4}default:/)
+        assert.match(content, /docs:\n {2}- path: doc\/a\.md/)
+      })
+    })
+
+    it('écrit un placeholder TODO si spaceKey est vide', async () => {
+      await withConfigFile(undefined, async () => {
+        await addAtlassianEnvironment('kleegroup', 'https://kleegroup.atlassian.net', '')
+        const content = fs.readFileSync(CONFIG_PATH, 'utf8')
+        assert.match(content, /spaceKey: TODO/)
+      })
+    })
+
+    it("retourne 'manual' sans rien modifier si `atlassian:` existe sous une forme non reconnue", async () => {
+      const existing = 'atlassian:\n  # commentaire interposé\n  environments:\n    default:\n      baseUrl: https://acme.atlassian.net\n'
+      await withConfigFile(existing, async () => {
+        const result = await addAtlassianEnvironment('acme2', 'https://acme2.atlassian.net', 'AC2')
+        assert.strictEqual(result, 'manual')
+        assert.strictEqual(fs.readFileSync(CONFIG_PATH, 'utf8'), existing)
+      })
+    })
+
+    it("retourne 'exists' sans rien modifier si la clé est déjà déclarée (pas de doublon YAML)", async () => {
+      const existing = 'atlassian:\n  environments:\n    acme:\n      baseUrl: https://acme.atlassian.net\n      spaceKey: AC\n'
+      await withConfigFile(existing, async () => {
+        const result = await addAtlassianEnvironment('acme', 'https://autre-domaine.atlassian.net', 'AUTRE')
+        assert.strictEqual(result, 'exists')
+        assert.strictEqual(fs.readFileSync(CONFIG_PATH, 'utf8'), existing)
+      })
+    })
+
+    it("invalide le cache de config : un loadRawConfig() après coup voit le nouvel environnement (pas l'état pré-écriture)", async () => {
+      const existing = 'atlassian:\n  environments:\n    default:\n      baseUrl: https://acme.atlassian.net\n      spaceKey: X\n'
+      await withConfigFile(existing, async () => {
+        resetConfigCache()
+        const before = loadRawConfig()
+        assert.deepStrictEqual(Object.keys(before.atlassian!.environments!), ['default'])
+
+        await addAtlassianEnvironment('acme2', 'https://acme2.atlassian.net', 'AC2')
+
+        const after = loadRawConfig()
+        assert.deepStrictEqual(Object.keys(after.atlassian!.environments!).sort(), ['acme2', 'default'])
+      })
     })
   })
 })

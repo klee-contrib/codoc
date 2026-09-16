@@ -3,7 +3,7 @@ import {
   DocEntryConfig,
   GitLabConfig,
 } from '../types/codoc-types.js'
-import {parseAtlassianEnvironments} from './codoc-config-atlassian.js'
+import {hasNoAtlassianEnvironments, parseAtlassianEnvironments} from './codoc-config-atlassian.js'
 import {
   asStringList,
   loadRawConfig,
@@ -41,7 +41,6 @@ function parseDocs(raw: RawDocEntry[] | undefined): DocEntryConfig[] {
       title: doc.confluence?.title,
       parentPageId: doc.confluence?.parentPageId?.toString(),
       titlePrefix: doc.confluence?.titlePrefix,
-      titleSuffix: doc.confluence?.titleSuffix,
     },
   }))
 }
@@ -62,4 +61,18 @@ export function getCodocConfig(): AppConfig {
   }
 
   return cache
+}
+
+export function getCodocConfigOrEmpty(): AppConfig {
+  const raw = loadRawConfig()
+  if (hasNoAtlassianEnvironments(raw)) {
+    return {atlassian: {environments: []}, gitlab: parseGitlab(raw.gitlab), docs: parseDocs(raw.docs)}
+  }
+  return getCodocConfig()
+}
+
+/** À appeler après toute écriture de codoc.yaml en cours de process (ex. ajout d'un environnement ad-hoc),
+ * pour qu'un prochain appel relise le fichier au lieu de servir l'état pré-écriture. */
+export function resetCodocConfigCache(): void {
+  cache = undefined
 }

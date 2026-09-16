@@ -4,8 +4,18 @@ import {RawAtlassianEnv, RawCodocConfig, RawDrawio, RawJira} from './codoc-confi
 
 const ATLASSIAN_TOKEN_URL = 'https://id.atlassian.com/manage-profile/security/api-tokens'
 const KADOC_REQUEST_URL = 'https://kleegroup.atlassian.net/servicedesk/customer/portal/27/group/230'
-/** Noms des variables d'env portant les identifiants Confluence d'un environnement donné. */
-function confluenceEnvVarNames(key: string): {tokenVar: string; userVar: string} {
+
+export function apiTokenGenerateUrl(): string {
+  return (
+    'Pour les membres de KleeGroup : ' +
+    KADOC_REQUEST_URL +
+    " -> Demande d'utilisation clé API -> " +
+    ATLASSIAN_TOKEN_URL +
+    " -> Créer un jeton d'API"
+  )
+}
+
+export function confluenceEnvVarNames(key: string): {tokenVar: string; userVar: string} {
   const suffix = key.toUpperCase().replace(/[^A-Z0-9]/g, '_')
   return {userVar: `CONFLUENCE_${suffix}_USERNAME`, tokenVar: `CONFLUENCE_${suffix}_API_TOKEN`}
 }
@@ -24,7 +34,7 @@ export function confluenceEnvRequirements(envs: Record<string, RawAtlassianEnv> 
       {
         name: tokenVar,
         hint: `Token API Atlassian pour l'environnement Confluence "${key}".`,
-        generateUrl: KADOC_REQUEST_URL + ' -> Demande d\'utilisation clé API -> ' + ATLASSIAN_TOKEN_URL + ' -> Créer un jeton d\'API',
+        generateUrl: apiTokenGenerateUrl(),
       },
     ]
   })
@@ -83,17 +93,23 @@ function resolveAtlassianEnvironment(
   }
 }
 
+/** Vrai si `atlassian.environments` est absent ou vide. */
+export function hasNoAtlassianEnvironments(raw: RawCodocConfig): boolean {
+  const envs = raw.atlassian?.environments
+  return !envs || !Object.keys(envs).length
+}
+
 export function parseAtlassianEnvironments(raw: RawCodocConfig): ConfluenceConfig[] {
   const missing: string[] = []
   const jira = parseJiraLink(raw.jira)
   const drawio = parseDrawio(raw.drawio)
 
-  const envs = raw.atlassian?.environments
-  if (!envs || !Object.keys(envs).length) {
+  if (hasNoAtlassianEnvironments(raw)) {
     throw new Error(
       'Aucun environnement Atlassian défini : ajoute une section `atlassian.environments:` dans codoc.yaml.',
     )
   }
+  const envs = raw.atlassian!.environments!
 
   const resolved = Object.entries(envs).map(([key, envYaml]) =>
     resolveAtlassianEnvironment(key, envYaml, missing, jira, drawio),

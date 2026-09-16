@@ -2,9 +2,17 @@ import {Hook} from '@oclif/core'
 import {execa} from 'execa'
 import ora from 'ora'
 
+import {loadRawConfig} from '../../config/codoc-config-raw.js'
 import {log} from '../../services/log/logger.js'
 
 const PACKAGE_NAME = 'codoc-cli'
+
+export function shouldSkipAutoUpdateCheck(env: NodeJS.ProcessEnv, isTTY: boolean, raw: {autoUpdate?: boolean}): boolean {
+  if (env.CI) return true
+  if (!isTTY) return true
+  if (raw.autoUpdate === false) return true
+  return false
+}
 
 async function currentGlobalVersion(): Promise<string | undefined> {
   const result = await execa('npm', ['list', '-g', PACKAGE_NAME], {reject: false})
@@ -49,7 +57,7 @@ async function rerunWithUpdatedBinary(): Promise<boolean> {
 }
 
 const hook: Hook<'init'> = async function () {
-  if (process.env.CI || !process.stdout.isTTY) return
+  if (shouldSkipAutoUpdateCheck(process.env, Boolean(process.stdout.isTTY), loadRawConfig())) return
 
   try {
     const [current, latest] = await Promise.all([currentGlobalVersion(), latestVersion()])

@@ -13,8 +13,16 @@ sidebar_position: 3
 | `gitlab.baseUrl` / `gitlab.defaultBranch` | Réécrit les liens vers du code en URLs GitLab dans les pages publiées (optionnel) |
 | `jira.serverId` / `jira.server` | Rend les liens de tickets Jira sous forme de macro Confluence native (optionnel) |
 | `docs[]` | Liste des documents synchronisés (chemin, environnement, titre, mots-clés de routage…) |
+| `autoUpdate` | `false` désactive la mise à jour automatique de codoc (voir ci-dessous). Défaut : `true` |
 
 `codoc init` génère un `codoc.yaml` commenté avec tous les champs disponibles.
+
+## Mise à jour automatique
+
+Au lancement de chaque commande interactive, codoc vérifie sur npm si une version plus récente est
+disponible et, si oui, l'installe automatiquement puis relance la commande d'origine avec le binaire
+à jour. Jamais en CI (`CI` défini) ni en sortie non-interactive. Désactivable via `autoUpdate: false`
+dans `codoc.yaml`.
 
 ## Identifiants - `.env-codoc`
 

@@ -5,7 +5,7 @@ import type * as Preset from "@docusaurus/preset-classic";
 const config: Config = {
   title: "codoc",
   tagline: "Synchronisation de documentation Confluence ↔ code",
-  favicon: "img/favicon.svg",
+  favicon: "img/favicon.png",
 
   future: {
     v4: true,

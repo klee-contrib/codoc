@@ -36,32 +36,31 @@ Synchronise chaque doc dans les deux sens selon son \`maintainedIn\`.
 | \`--env <clé>\` | Ne synchronise que cet environnement Confluence. Défaut : tous |
 | \`--confirm\` / \`--no-confirm\` | Répond automatiquement aux suppressions/adoptions en conflit de titre (accepte/refuse tout). Non fourni : demande à chaque cas |
 
-### \`codoc pull [url\\|id]\`
+### \`codoc pull [url]\`
 
-Importe une page Confluence existante en local (interactif).
+Importe une page Confluence existante en local (interactif). L'environnement est déduit du domaine de l'URL (comparé au \`baseUrl\` de chaque environnement configuré), avec repli sur l'environnement unique ou une recherche dans tous si besoin.
 
 | Flag | Rôle |
 |---|---|
-| \`--env <clé>\` | Environnement où chercher la page. Défaut : déduit de l'URL, sinon auto/prompt |
 | \`--as-folder\` / \`--no-as-folder\` | Sous-éléments détectés : importe tout le dossier, ou seulement la page. Non fourni : demande le cas échéant |
 | \`--keep-existing\` / \`--no-keep-existing\` | Import précédent détecté : le remplace, ou en crée un séparé. Non fourni : demande le cas échéant |
 | \`--in-config\` / \`--no-in-config\` | Ajoute/met à jour l'entrée \`codoc.yaml\`. \`--no-in-config\` : import ponctuel, hors suivi (yaml et lock non touchés). Non fourni : demande en fin de commande |
 | \`--local-path <chemin>\` | Chemin local du \`.md\` (page unique) ou dossier de destination (import dossier) |
 | \`--title <titre>\` | Titre de la page Confluence (page unique). Défaut : config existante, sinon le titre Confluence |
-| \`--parent-page-id <id>\` | parentPageId Confluence. Défaut : config existante, sinon le parent réel de la page |
 | \`--maintained-in <code\\|confluence>\` | \`code\` → le \`.md\` fait foi ; \`confluence\` → la page fait foi. Défaut : \`confluence\` |
 | \`--images-dir <chemin>\` | Dossier local pour les images (\`""\` pour désactiver). Défaut : \`doc/img\` |
 
 ### \`codoc publish <chemin>\`
 
-Publie un \`.md\` local vers Confluence (interactif).
+Publie un \`.md\` local vers Confluence (interactif). L'environnement est déduit du domaine de l'URL passée à \`--parent-page\`, avec prompt si absente ou non reconnue.
 
 | Flag | Rôle |
 |---|---|
-| \`--env <clé>\` | Environnement Confluence cible. Défaut : config existante, sinon auto/prompt |
 | \`--in-config\` / \`--no-in-config\` | Ajoute/met à jour l'entrée \`codoc.yaml\`. \`--no-in-config\` : publication ponctuelle, hors suivi (yaml et lock non touchés). Non fourni : demande en fin de commande |
-| \`--parent-page-id <id>\` | parentPageId Confluence cible. Défaut : config existante, sinon \`defaultParentPageId\` de l'env |
+| \`--keep-existing\` / \`--no-keep-existing\` | Entrée \`codoc.yaml\` déjà existante pour ce chemin : la remplace, ou en crée une séparée. Non fourni : demande le cas échéant |
+| \`--parent-page <url>\` | URL de la page Confluence parente cible (\`""\` pour aucun parent). Défaut : config existante, sinon prompt |
 | \`--title <titre>\` | Titre de la page Confluence (fichier unique). Défaut : config existante, sinon le H1 du fichier |
+| \`--maintained-in <code\\|confluence>\` | Source de vérité pour les prochains \`sync\`. Défaut : \`code\`. N'affecte pas cette publication (toujours code → Confluence) |
 
 ### \`codoc tree\`
 

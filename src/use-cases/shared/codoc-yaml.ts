@@ -1,5 +1,7 @@
+import {resetCodocConfigCache} from '../../config/codoc-config.js'
+import {resetConfigCache} from '../../config/codoc-config-raw.js'
 import {CONFIG_PATH} from '../../config/codoc-paths.js'
-import {readFile, writeFile} from '../../services/files-service.js'
+import {fileExists, readFile, writeFile} from '../../services/files-service.js'
 import {MaintainedIn} from '../../types/codoc-types.js'
 
 // Édition textuelle (par bloc) de codoc.yaml, sans re-sérialisation YAML.
@@ -76,4 +78,42 @@ export async function appendToDocsConfig(entry: string): Promise<void> {
 
 export async function removeDocsConfigEntries(paths: string[]): Promise<void> {
   writeFile(CONFIG_PATH, removeEntriesFromYaml(readFile(CONFIG_PATH), paths))
+}
+
+function buildEnvBlock(key: string, baseUrl: string, spaceKey: string): string {
+  const spaceKeyLine = spaceKey ? `      spaceKey: ${spaceKey}\n` : '      spaceKey: TODO # requis pour publish/sync\n'
+  return `    ${key}:\n      baseUrl: ${baseUrl}\n${spaceKeyLine}`
+}
+
+function resetConfigCaches(): void {
+  resetConfigCache()
+  resetCodocConfigCache()
+}
+
+export async function addAtlassianEnvironment(key: string, baseUrl: string, spaceKey: string): Promise<'created' | 'inserted' | 'manual' | 'exists'> {
+  const block = buildEnvBlock(key, baseUrl, spaceKey)
+
+  if (!fileExists(CONFIG_PATH)) {
+    writeFile(CONFIG_PATH, `atlassian:\n  environments:\n${block}`)
+    resetConfigCaches()
+    return 'created'
+  }
+
+  const existing = readFile(CONFIG_PATH)
+  const match = existing.match(/^atlassian:\r?\n\s*environments:\r?\n/m)
+  if (match) {
+    const hasKeyAlready = existing.split(/\r?\n/).some((line) => line.trim() === `${key}:`)
+    if (hasKeyAlready) return 'exists'
+
+    const insertAt = match.index! + match[0].length
+    writeFile(CONFIG_PATH, existing.slice(0, insertAt) + block + existing.slice(insertAt))
+    resetConfigCaches()
+    return 'inserted'
+  }
+
+  if (/^atlassian:/m.test(existing)) return 'manual'
+
+  writeFile(CONFIG_PATH, `atlassian:\n  environments:\n${block}\n${existing}`)
+  resetConfigCaches()
+  return 'created'
 }

@@ -105,7 +105,7 @@ function deriveTarget(
 
   const baseTitle =
     (isSingleFile ? conf.title : undefined) ?? lockedTitle ?? extractH1(markdown) ?? capitalizeFirst(filenameWithoutExt)
-  const title = `${conf.titlePrefix ?? ''}${baseTitle}${conf.titleSuffix ?? ''}`
+  const title = `${conf.titlePrefix ?? ''}${baseTitle}`
 
   const id = slugify(filenameWithoutExt)
 
@@ -160,7 +160,7 @@ function buildFolderHierarchy(
     const parentFolderKey = parentRelDir ? relDirToKey.get(parentRelDir) : undefined
 
     const baseFolderTitle = capitalizeFirst(folderName)
-    const folderTitle = `${doc.confluence.titlePrefix ?? ''}${baseFolderTitle}${doc.confluence.titleSuffix ?? ''}`
+    const folderTitle = `${doc.confluence.titlePrefix ?? ''}${baseFolderTitle}`
 
     folderTargets.push({
       codocId: doc.codocId,

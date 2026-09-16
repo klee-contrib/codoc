@@ -37,9 +37,7 @@ function basicAuth(username: string, apiToken: string): string {
   return `Basic ${Buffer.from(`${username}:${apiToken}`).toString('base64')}`
 }
 
-// Défaut ky (10s) trop court pour les grosses requêtes (pages volumineuses, beaucoup de pièces
-// jointes) : provoque un TimeoutError qui remonte comme un crash plutôt qu'une vraie erreur réseau.
-const CONFLUENCE_TIMEOUT_MS = 60_000
+const CONFLUENCE_TIMEOUT_MS = 30_000
 
 export function createConfluenceHttp(conf: ConfluenceConfig): ConfluenceHttp {
   return {
