@@ -38,6 +38,10 @@ export const MD_CASES: MdCase[] = [
   { name: "link-external", markdown: "Voir [le site](https://example.com) ici." },
   { name: "link-relative", markdown: "Voir [le fichier](../src/index.ts) ici." },
   { name: "link-relative-title-line", markdown: '[code](../src/index.ts "L42")' },
+  { name: "link-relative-md", markdown: "Voir [autre doc](../docs/autre.md) ici." },
+  { name: "link-relative-md-unpublished", markdown: "Voir [brouillon](../docs/brouillon.md) ici." },
+  // Un lien .md gagne sur la convention GitLab "L42" (sans rapport pour une page Confluence).
+  { name: "link-relative-md-title-line", markdown: '[section](../docs/autre.md "L42")' },
   { name: "link-anchor", markdown: "Voir [section](#ma-section) ici." },
   { name: "link-mailto", markdown: "Écrire à [moi](mailto:test@example.com)." },
   { name: "image-attachment", markdown: "![mon image](img/photo.png)" },
@@ -130,6 +134,15 @@ const DRAWIO_ADF =
 const JIRA_DATASOURCE =
   '<table data-table-width="1800" data-layout="default" ac:local-id="9a33"><tbody><tr><td ac:local-id="d1f4"><p local-id="4ba0" /><a href="https://example.atlassian.net/issues/?jql=text%20~%20%22DEP-918%22" local-id="9d31" data-card-appearance="block" data-datasource="{&quot;id&quot;:&quot;d8b7&quot;}">https://example.atlassian.net/issues/?jql=text</a></td></tr></tbody></table>';
 
+// Mêmes attributs que JIRA_DATASOURCE, mais data-card-appearance avant href sur la balise <a> -
+// verrouille le fait que l'ordre des attributs n'affecte pas la conversion.
+const JIRA_DATASOURCE_ATTRS_REVERSED =
+  '<a data-card-appearance="block" local-id="9d31" href="https://example.atlassian.net/issues/?jql=text%20~%20%22DEP-918%22" data-datasource="{&quot;id&quot;:&quot;d8b7&quot;}">https://example.atlassian.net/issues/?jql=text</a>';
+
+// Carte "block" sans href (lien cassé/non résolu) - doit rester telle quelle, non convertie.
+const JIRA_DATASOURCE_NO_HREF =
+  '<a data-card-appearance="block" local-id="9d31" data-datasource="{&quot;id&quot;:&quot;d8b7&quot;}">Contenu introuvable</a>';
+
 export const XML_CASES: XmlCase[] = [
   {
     name: "generated-info-block",
@@ -186,6 +199,12 @@ export const XML_CASES: XmlCase[] = [
   },
   { name: "whiteboard-unknown-macro", xml: WHITEBOARD },
   { name: "jira-datasource-table", xml: JIRA_DATASOURCE, baseUrl: "https://example.atlassian.net/wiki" },
+  {
+    name: "jira-datasource-attrs-reversed",
+    xml: JIRA_DATASOURCE_ATTRS_REVERSED,
+    baseUrl: "https://example.atlassian.net/wiki",
+  },
+  { name: "jira-datasource-no-href", xml: JIRA_DATASOURCE_NO_HREF, baseUrl: "https://example.atlassian.net/wiki" },
   {
     name: "jira-inline-card",
     xml: '<p>Ticket <a href="https://example.atlassian.net/browse/DEP-918" data-card-appearance="inline"></a> ici.</p>',

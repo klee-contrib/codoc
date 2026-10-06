@@ -35,6 +35,8 @@ Ne pas committer (ajouté à `.gitignore` par `init`).
 
 Toujours préfixées par la clé de l'environnement (`atlassian.environments.<clé>` dans `codoc.yaml`) - même s'il n'y en a qu'un seul, ex. `CONFLUENCE_DEFAULT_USERNAME`. Pas de variable générique partagée entre environnements.
 
+Une variable absente est demandée en console (terminal interactif uniquement), puis proposée à la sauvegarde dans `.env-codoc`. Un `baseUrl` ou `spaceKey` absent de `codoc.yaml` est aussi demandé, mais jamais écrit : codoc affiche le bloc à y ajouter.
+
 ## `codoc.lock`
 
 Généré par `sync` / `pull`. **À committer**. Trace les IDs Confluence des pages synchronisées, pour des mises à jour idempotentes.

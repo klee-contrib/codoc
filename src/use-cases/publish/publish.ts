@@ -2,16 +2,16 @@
 
 import path from 'path'
 
-import {input} from '@inquirer/prompts'
-
+import {pageUrl} from '../../clients/confluence/utils/confluence-url.js'
 import {getCodocConfigOrEmpty, onlySingleEnv} from '../../config/codoc-config.js'
+import {INPUTS, inConfigInputs} from '../../config/codoc-inputs.js'
 import {PROJECT_ROOT} from '../../config/codoc-paths.js'
 import {generateRandomCodocId} from '../../services/codoc-id.js'
 import {loadPublishState, savePublishState} from '../../services/lock/lock-file.js'
 import {log} from '../../services/log/logger.js'
 import {fileExists, isDirectory, readFile, toPosixPath} from '../../services/files-service.js'
 import {getDefaultBranch} from '../../services/git/default-branch.js'
-import {ask, createRl, resolveConfirm, resolveValue, Rl} from '../../services/prompt.js'
+import {resolveInputs} from '../../services/resolve-inputs.js'
 import {AppConfig, ConfluenceConfig, DocEntryConfig, MaintainedIn} from '../../types/codoc-types.js'
 import {expandDocEntry, extractH1} from '../shared/list-documents.js'
 import {EnvRegistry} from '../shared/confluence-client-registry.js'
@@ -24,13 +24,14 @@ import {syncMatched, syncNew} from '../sync/sync-handlers.js'
 import {parsePageUrl} from '../shared/parse-page-url.js'
 
 async function askAdHocBaseUrl(): Promise<string> {
-  const raw = await input({message: '  Aucun environnement configuré : URL de base Confluence cible (ex. https://votreorg.atlassian.net) :'})
-  if (!raw) throw new Error("URL de base Confluence requise en l'absence de tout environnement configuré.")
-  try {
-    return new URL(raw).hostname
-  } catch {
-    throw new Error(`URL invalide : "${raw}".`)
-  }
+  const {adHocBaseUrl} = await resolveInputs(INPUTS, {adHocBaseUrl: {}})
+  return new URL(adHocBaseUrl).hostname
+}
+
+async function askParentPage(env: ConfluenceConfig | undefined): Promise<string> {
+  const suggested = env?.defaultParentPageId ? pageUrl(env.baseUrl, env.spaceKey, env.defaultParentPageId) : undefined
+  const {parentPage} = await resolveInputs(INPUTS, {parentPage: {optional: true, suggested}})
+  return parentPage ?? ''
 }
 
 export interface PublishFlags {
@@ -38,6 +39,7 @@ export interface PublishFlags {
   keepExisting?: boolean
   parentPage?: string
   title?: string
+  prefix?: string
   maintainedIn?: string
 }
 
@@ -52,6 +54,7 @@ interface PublishInput {
   isDir: boolean
   parentPageId?: string
   title?: string
+  titlePrefix?: string
   maintainedIn: MaintainedIn
   entry: SyncEntry
   syntheticDoc: DocEntryConfig
@@ -63,8 +66,8 @@ interface ParentAndEnv {
 }
 
 /** Depuis une URL brute (ou "" = aucun parent) : extrait le pageId et déduit l'env de son domaine. */
-async function envAndParentFromRaw(rl: Rl, config: AppConfig, raw: string): Promise<ParentAndEnv> {
-  if (!raw) return {env: await pickEnvInteractive(rl, config), parentPageId: ''}
+async function envAndParentFromRaw(config: AppConfig, raw: string): Promise<ParentAndEnv> {
+  if (!raw) return {env: await pickEnvInteractive(config), parentPageId: ''}
 
   const {pageId, domain} = parsePageUrl(raw)
   const match = matchEnvByDomain(config.atlassian.environments, domain)
@@ -72,7 +75,7 @@ async function envAndParentFromRaw(rl: Rl, config: AppConfig, raw: string): Prom
 
   log.blank()
   log.warning1(`Le domaine "${domain}" ne correspond à aucun environnement - sélection manuelle…`)
-  return {env: await pickEnvInteractive(rl, config), parentPageId: pageId}
+  return {env: await pickEnvInteractive(config), parentPageId: pageId}
 }
 
 /**
@@ -82,7 +85,6 @@ async function envAndParentFromRaw(rl: Rl, config: AppConfig, raw: string): Prom
  * il reste figé à celui déjà suivi (ne doit jamais changer silencieusement au gré d'une URL resaisie).
  */
 async function resolveParentAndEnv(
-  rl: Rl,
   config: AppConfig,
   flagParentPage: string | undefined,
   kept: DocEntryConfig | undefined,
@@ -93,47 +95,36 @@ async function resolveParentAndEnv(
       return {env: adHocEnv, parentPageId: flagParentPage ? parsePageUrl(flagParentPage).pageId : ''}
     }
     if (kept?.confluence.parentPageId !== undefined) return {env: adHocEnv, parentPageId: kept.confluence.parentPageId}
-    const raw = await resolveValue(rl, {
-      prompt: 'URL de la page Confluence parente ("" pour aucun parent) :',
-      promptDefault: adHocEnv.defaultParentPageId,
-    })
+    const raw = await askParentPage(adHocEnv)
     return {env: adHocEnv, parentPageId: raw ? parsePageUrl(raw).pageId : ''}
   }
 
   // 1. Flag explicite : priorité absolue.
-  if (flagParentPage !== undefined) return envAndParentFromRaw(rl, config, flagParentPage)
+  if (flagParentPage !== undefined) return envAndParentFromRaw(config, flagParentPage)
 
   // 2. Config conservée : l'env suit toujours kept.env, jamais une URL resaisie.
   if (kept) {
-    const env = kept.env ? selectEnvs(config, kept.env)[0] : await pickEnvInteractive(rl, config)
+    const env = kept.env ? selectEnvs(config, kept.env)[0] : await pickEnvInteractive(config)
     const keptParentPageId = kept.confluence.parentPageId
     if (keptParentPageId !== undefined) return {env, parentPageId: keptParentPageId}
 
-    const raw = await resolveValue(rl, {
-      prompt: 'URL de la page Confluence parente :',
-      promptDefault: env.defaultParentPageId,
-    })
+    const raw = await askParentPage(env)
     return {env, parentPageId: raw ? parsePageUrl(raw).pageId : raw}
   }
 
   // 3. Ni flag ni config conservée : prompt, pré-rempli seulement si un unique environnement existe.
-  const singleEnv = onlySingleEnv(config.atlassian.environments)
-  const raw = await resolveValue(rl, {
-    prompt: 'URL de la page Confluence parente :',
-    promptDefault: singleEnv?.defaultParentPageId,
-  })
-  return envAndParentFromRaw(rl, config, raw)
+  const raw = await askParentPage(onlySingleEnv(config.atlassian.environments))
+  return envAndParentFromRaw(config, raw)
 }
 
 /** Lit la cible (fichier ou dossier), valide, et résout chaque information (flag → config → prompt). */
 async function collectPublishInput(
-  rl: Rl,
   config: AppConfig,
   inputPath: string,
   flags: PublishFlags,
   adHocEnv: ConfluenceConfig | undefined,
 ): Promise<PublishInput> {
-  const raw = (inputPath || (await ask(rl, 'Chemin local de la doc (.md) ou du dossier :'))).trim()
+  const raw = inputPath.trim()
   if (!raw) throw new Error('Chemin local requis.')
 
   const relPath = toPosixPath(raw).replace(/^\.\//, '').replace(/\/+$/, '')
@@ -152,13 +143,11 @@ async function collectPublishInput(
   if (existingDoc) {
     log.warning1(`Une entrée codoc.yaml existe déjà pour "${existingDoc.path}".`)
     log.info4(`Titre        : ${existingDoc.confluence.title ?? '(aucun)'}`)
+    log.info4(`Préfixe      : ${existingDoc.confluence.titlePrefix ?? '(aucun)'}`)
     log.info4(`parentPageId : ${existingDoc.confluence.parentPageId ?? '(aucun)'}`)
     log.info4(`maintainedIn : ${existingDoc.maintainedIn}`)
-    keepExisting = await resolveConfirm(rl, {
-      flag: flags.keepExisting,
-      question: 'Garder la config existante (les valeurs ci-dessous serviront de défaut) ?',
-      default: true,
-    })
+    keepExisting = (await resolveInputs(INPUTS, {keepExisting: {flag: flags.keepExisting, suggested: true}}))
+      .keepExisting
     if (!keepExisting) {
       log.warning1("L'existant est conservé ; une nouvelle entrée séparée est créée.")
     }
@@ -167,29 +156,27 @@ async function collectPublishInput(
 
   const codocId = kept?.codocId ?? generateRandomCodocId()
 
-  const {env, parentPageId: rawParentPageId} = await resolveParentAndEnv(rl, config, flags.parentPage, kept, adHocEnv)
+  const {env, parentPageId: rawParentPageId} = await resolveParentAndEnv(config, flags.parentPage, kept, adHocEnv)
   const parentPageId = rawParentPageId || undefined
 
-  let title: string | undefined
-  if (!isDir) {
-    const h1 = extractH1(readFile(abs))
-    title = await resolveValue(rl, {
+  const h1 = isDir ? undefined : extractH1(readFile(abs))
+  const answers = await resolveInputs(INPUTS, {
+    title: {
       flag: flags.title,
-      config: kept?.confluence.title,
-      prompt: 'Titre de la page Confluence :',
-      promptDefault: h1 ?? path.basename(abs, '.md'),
-    })
-  }
-
-  // code → le .md local fait foi ; confluence → la page fait foi (source de vérité pour les
-  // prochains `codoc sync` - n'affecte pas la publication en cours, toujours code → Confluence).
-  const maintainedInRaw = await resolveValue(rl, {
-    flag: flags.maintainedIn,
-    config: kept?.maintainedIn,
-    prompt: 'Maintenue côté code ou confluence pour les prochains sync ? (code/confluence) :',
-    promptDefault: 'code',
+      existing: kept?.confluence.title,
+      suggested: h1 ?? path.basename(abs, '.md'),
+      when: !isDir,
+    },
+    // Applicable aussi bien à une page unique qu'à un dossier (préfixe chaque page générée) - cf.
+    // buildDocTarget/buildFolderHierarchy dans list-documents.ts.
+    prefix: {flag: flags.prefix, existing: kept?.confluence.titlePrefix, optional: true},
+    // code → le .md local fait foi ; confluence → la page fait foi (source de vérité pour les
+    // prochains `codoc sync` - n'affecte pas la publication en cours, toujours code → Confluence).
+    maintainedIn: {flag: flags.maintainedIn, existing: kept?.maintainedIn, suggested: 'code'},
   })
-  const maintainedIn: MaintainedIn = maintainedInRaw.trim().toLowerCase() === 'confluence' ? 'confluence' : 'code'
+  const title = answers.title
+  const titlePrefix = answers.prefix || undefined
+  const maintainedIn: MaintainedIn = answers.maintainedIn.toLowerCase() === 'confluence' ? 'confluence' : 'code'
 
   const syntheticDoc: DocEntryConfig = {
     codocId,
@@ -197,7 +184,7 @@ async function collectPublishInput(
     maintainedIn,
     env: env.key,
     generateSummary: kept?.generateSummary ?? true,
-    confluence: {title, parentPageId},
+    confluence: {title, titlePrefix, parentPageId},
   }
 
   // entry.maintainedIn reste 'code' en dur, INDÉPENDAMMENT du maintainedIn résolu ci-dessus :
@@ -217,7 +204,22 @@ async function collectPublishInput(
     title,
   }
 
-  return {env, codocId, existingDoc, keepExisting, relPath, yamlPath, abs, isDir, parentPageId, title, maintainedIn, entry, syntheticDoc}
+  return {
+    env,
+    codocId,
+    existingDoc,
+    keepExisting,
+    relPath,
+    yamlPath,
+    abs,
+    isDir,
+    parentPageId,
+    title,
+    titlePrefix,
+    maintainedIn,
+    entry,
+    syntheticDoc,
+  }
 }
 
 /** Écrit/met à jour l'entrée yaml correspondant à la publication. */
@@ -225,6 +227,7 @@ async function persistYamlEntry(input: PublishInput, isReplacement: boolean): Pr
   const yamlEntry = buildYamlEntry({
     localPath: input.yamlPath,
     title: input.title,
+    titlePrefix: input.titlePrefix,
     parentPageId: input.parentPageId,
     maintainedIn: input.maintainedIn,
     env: input.env.key,
@@ -247,18 +250,16 @@ async function persistYamlEntry(input: PublishInput, isReplacement: boolean): Pr
  * hors suivi : aucune trace ne subsiste pour comparer un futur republish par ID). Retourne la décision
  * pour que l'appelant sache s'il doit aussi persister le lock. */
 async function maybePersistYamlEntry(
-  rl: Rl,
   input: PublishInput,
   inConfigFlag: boolean | undefined,
   adHoc: AdHocEnv | undefined,
 ): Promise<boolean> {
-  if (!(await confirmPersistAdHocEnvOrSkip(rl, adHoc))) return false
+  if (!(await confirmPersistAdHocEnvOrSkip(adHoc))) return false
 
   const isReplacement = input.keepExisting && Boolean(input.existingDoc)
-  const question = isReplacement
-    ? 'Mettre à jour la config codoc.yaml existante pour cette doc ?'
-    : "Ajouter cette doc à codoc.yaml (pour qu'elle soit synchronisée par `codoc sync`) ?"
-  const addToConfig = await resolveConfirm(rl, {flag: inConfigFlag, question, default: true})
+  const {inConfig: addToConfig} = await resolveInputs(inConfigInputs(isReplacement ? 'replacement' : 'page'), {
+    inConfig: {flag: inConfigFlag, suggested: true},
+  })
   if (addToConfig) {
     await persistYamlEntry(input, isReplacement)
   } else {
@@ -281,54 +282,51 @@ export async function publish(inputPath: string, flags: PublishFlags = {}): Prom
     adHoc = await resolveAdHocEnv(domain, [], true, parsedParent?.spaceKey)
   }
 
-  const rl = createRl()
+  log.startProcess('Publication local → Confluence')
 
-  try {
-    log.startProcess('Publication local → Confluence')
+  // 2. Validation + résolution des informations (flag → config → prompt)
+  const input = await collectPublishInput(config, inputPath, flags, adHoc?.env)
 
-    // 2. Validation + résolution des informations (flag → config → prompt)
-    const input = await collectPublishInput(rl, config, inputPath, flags, adHoc?.env)
+  // 3. Expansion des cibles (fichier unique, ou dossiers + pages pour un glob).
+  const targets = await expandDocEntry(input.syntheticDoc, input.env)
+  if (!targets.length) throw new Error(`Aucun fichier .md à publier sous "${input.relPath}".`)
 
-    // 3. Expansion des cibles (fichier unique, ou dossiers + pages pour un glob).
-    const targets = await expandDocEntry(input.syntheticDoc, input.env)
-    if (!targets.length) throw new Error(`Aucun fichier .md à publier sous "${input.relPath}".`)
-
-    // 4. State + registry (clients par env)
-    const state = loadPublishState()
-    const now = new Date().toISOString()
-    const ctx: SyncCtx = {
-      config,
-      generatedAt: now,
-      registry: new EnvRegistry(),
-      envByKey: new Map(config.atlassian.environments.map((e) => [e.key, e])),
-      now,
-      confirm: () => Promise.resolve(true),
-      codeTargetsByCodocId: new Map([[input.codocId, targets]]),
-      defaultBranch: await getDefaultBranch(),
-    }
-
-    // 5. Publication (throw explicite si titre déjà pris ailleurs ; sinon màj/création).
-    log.blank()
-    log.step1('Publication')
-    const lockHit = state.pages[input.codocId]
-    const published = lockHit ? await syncMatched(ctx, input.entry, lockHit) : await syncNew(ctx, input.entry)
-    if (!published) throw new Error(`Aucun fichier .md à publier sous "${input.relPath}".`)
-
-    // 6. Persistance yaml (résolue via --in-config) + lock, uniquement si on garde une trace de cette doc.
-    const addToConfig = await maybePersistYamlEntry(rl, input, flags.inConfig, adHoc)
-    if (addToConfig) {
-      state.pages[input.codocId] = published
-      state.lastPublished = state.lastPublished || now
-      savePublishState(state)
-      log.success1('[UPDATED] codoc.lock mis à jour')
-    }
-
-    log.finalBanner('Publication terminée', {
-      'Doc locale': input.yamlPath,
-      Environnement: input.env.key,
-      ...(input.isDir ? {'Pages publiées': String(targets.filter((t) => !t.isFolder).length)} : {Page: input.title}),
-    })
-  } finally {
-    rl.close()
+  // 4. State + registry (clients par env)
+  const state = loadPublishState()
+  const now = new Date().toISOString()
+  const ctx: SyncCtx = {
+    config,
+    generatedAt: now,
+    registry: new EnvRegistry(),
+    envByKey: new Map(config.atlassian.environments.map((e) => [e.key, e])),
+    now,
+    confirm: () => Promise.resolve(true),
+    codeTargetsByCodocId: new Map([[input.codocId, targets]]),
+    defaultBranch: await getDefaultBranch(),
+    lock: state,
   }
+
+  // 5. Publication (throw explicite si titre déjà pris ailleurs ; sinon màj/création).
+  log.blank()
+  log.step1('Publication')
+  const lockHit = state.pages[input.codocId]
+  const published = lockHit ? await syncMatched(ctx, input.entry, lockHit) : await syncNew(ctx, input.entry)
+  if (!published) throw new Error(`Aucun fichier .md à publier sous "${input.relPath}".`)
+
+  // 6. Persistance yaml (résolue via --in-config) + lock, uniquement si on garde une trace de cette doc.
+  const addToConfig = await maybePersistYamlEntry(input, flags.inConfig, adHoc)
+  if (addToConfig) {
+    state.pages[input.codocId] = published
+    state.lastPublished = state.lastPublished || now
+    savePublishState(state)
+    log.success1('[UPDATED] codoc.lock mis à jour')
+  }
+
+  log.finalBanner('Publication terminée', {
+    'Doc locale': input.yamlPath,
+    Environnement: input.env.key,
+    ...(input.isDir
+      ? {'Pages publiées': String(targets.filter((t) => !t.isFolder).length)}
+      : {Page: targets.find((t) => !t.isFolder)?.title ?? input.title}),
+  })
 }

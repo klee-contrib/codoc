@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Commandes
 
-Chaque commande se lance depuis la racine du projet ciblé. Résolution des informations dans l'ordre **flag CLI** → **valeur déjà présente dans `codoc.yaml`** → **prompt console** (pas de détection automatique de mode CI - voir [Usage en CI](#usage-en-ci)).
+Chaque commande se lance depuis la racine du projet ciblé. Résolution des informations dans l'ordre **flag CLI** → **variable d'environnement ou valeur déjà présente dans `codoc.yaml`** → **prompt console**, ce dernier uniquement dans un terminal interactif (voir [Usage en CI](#usage-en-ci)).
 
 ## `codoc init`
 
@@ -23,9 +23,9 @@ Génère le contexte agent IA (basé sur `codoc.yaml`, qui doit déjà exister e
 
 | Flag | Rôle |
 |---|---|
-| `--target <clé>` | Cible(s) à générer, répétable (`--target a --target b`) et/ou séparées par des virgules (`--target a,b`). Défaut : les cibles déjà en place (silencieux), sinon demandé |
+| `--target <clé>` | Cible(s) à générer, répétable (`--target a --target b`) et/ou séparées par des virgules (`--target a,b`). Sans ce flag : sélection interactive |
 
-Résolution propre à cette commande (différente du flag → `codoc.yaml` → prompt des autres commandes, cf. [Usage en CI](#usage-en-ci)) : `--target` → cibles déjà présentes sur le disque (aucune invite) → sélection interactive (uniquement si `--target` est absent et qu'aucune cible n'existe encore).
+Contrairement aux autres commandes (flag → `codoc.yaml` → prompt, cf. [Usage en CI](#usage-en-ci)), `agent-context` n'a pas de valeur de repli dans `codoc.yaml` : c'est `--target`, ou l'invite interactive - jamais une détection de ce qui existe déjà sur le disque. La génération écrase toujours le fichier existant de la cible choisie. En CI, `--target` est donc requis (sans lui, la commande échoue en le signalant).
 
 ## `codoc sync`
 
@@ -60,6 +60,7 @@ Publie un `.md` local vers Confluence (interactif). L'environnement est déduit 
 | `--keep-existing` / `--no-keep-existing` | Si une entrée `codoc.yaml` existe déjà pour ce chemin : la met à jour en place (valeurs existantes comme défauts), ou en crée une séparée. Non fourni : demande le cas échéant |
 | `--parent-page <url>` | URL de la page Confluence parente cible (`""` pour aucun parent). Défaut : celle de la config existante, sinon prompt |
 | `--title <titre>` | Titre de la page Confluence (fichier unique). Défaut : config existante, sinon le H1 du fichier |
+| `--prefix <préfixe>` | Préfixe ajouté devant le titre (fichier unique) ou devant celui de chaque page générée (dossier). Défaut : config existante, sinon aucun (prompt, vide accepté) |
 | `--maintained-in <code\|confluence>` | Source de vérité enregistrée pour les prochains `sync` : `code` ou `confluence`. Défaut : `code`. N'affecte pas cette publication (toujours un envoi local → Confluence) |
 
 ## `codoc tree`
@@ -90,4 +91,6 @@ aucun sens).
 
 ## Usage en CI
 
-`publish`, `pull` et `sync` résolvent chaque information nécessaire dans cet ordre : **flag CLI** (`--xxx`, cf. tableaux ci-dessus) → **valeur déjà présente dans `codoc.yaml`** → **prompt console**. Il n'y a pas de détection automatique de mode CI : une commande ne demande jamais rien tant que tout ce dont elle a besoin est fourni en flag ou déjà configuré ; si une information manque, elle est demandée comme en local (à la charge du pipeline de fournir ce qu'il faut pour rester non-interactif).
+Chaque commande rassemble au démarrage ce dont elle a besoin (identifiants et `codoc.yaml` de chaque environnement, argument), le reste étant résolu au moment où il dépend des données (config existante, sous-pages, environnement ambigu, confirmations de `sync`). Chaque information est résolue dans cet ordre : **flag CLI** (`--xxx`, cf. tableaux ci-dessus) → **variable d'environnement** ou **valeur déjà présente dans `codoc.yaml`** → **prompt console**.
+
+Le prompt n'a lieu que dans un terminal interactif. Hors TTY (CI), une question qui a une valeur par défaut prend cette valeur (ex. `sync` sans `--confirm` refuse suppressions et adoptions, `publish`/`pull` sans `--in-config` ajoutent la doc à `codoc.yaml`) ; sinon la commande échoue d'emblée en listant toutes les valeurs manquantes et où les renseigner.

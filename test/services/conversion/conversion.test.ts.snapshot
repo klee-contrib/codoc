@@ -46,6 +46,14 @@ exports[`conversion golden-master > confluence → markdown > image-url 1`] = `
 ![](https://example.com/x.png)
 `;
 
+exports[`conversion golden-master > confluence → markdown > jira-datasource-attrs-reversed 1`] = `
+[Tableau Jira](https://example.atlassian.net/issues/?jql=text%20~%20%22DEP-918%22)
+`;
+
+exports[`conversion golden-master > confluence → markdown > jira-datasource-no-href 1`] = `
+Contenu introuvable
+`;
+
 exports[`conversion golden-master > confluence → markdown > jira-datasource-table 1`] = `
 <table>
 <tbody>
@@ -460,6 +468,18 @@ exports[`conversion golden-master > markdown → confluence > link-relative (sou
 <p>Voir <a href="https://gitlab.example.com/group/project/-/blob/develop/src/index.ts">le fichier</a> ici.</p>
 `;
 
+exports[`conversion golden-master > markdown → confluence > link-relative-md (sourceFile) 1`] = `
+<p>Voir <a href="https://example.atlassian.net/wiki/spaces/DOC/pages/999999/Autre+doc">autre doc</a> ici.</p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > link-relative-md-title-line (sourceFile) 1`] = `
+<p><a href="https://example.atlassian.net/wiki/spaces/DOC/pages/999999/Autre+doc">section</a></p>
+`;
+
+exports[`conversion golden-master > markdown → confluence > link-relative-md-unpublished (sourceFile) 1`] = `
+<p>Voir <a href="https://gitlab.example.com/group/project/-/blob/develop/docs/brouillon.md">brouillon</a> ici.</p>
+`;
+
 exports[`conversion golden-master > markdown → confluence > link-relative-title-line (sourceFile) 1`] = `
 <p><a href="https://gitlab.example.com/group/project/-/blob/develop/src/index.ts#L42">code</a></p>
 `;
@@ -749,6 +769,14 @@ exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > 
 
 exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > image-url 1`] = `
 <img src="https://example.com/x.png" alt="">
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > jira-datasource-attrs-reversed 1`] = `
+<a href="https://example.atlassian.net/issues/?jql=text%20~%20%22DEP-918%22">Tableau Jira</a>
+`;
+
+exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > jira-datasource-no-href 1`] = `
+<a>Contenu introuvable</a>
 `;
 
 exports[`conversion golden-master > preprocessStorage (étape intermédiaire) > jira-datasource-table 1`] = `

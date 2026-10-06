@@ -13,12 +13,13 @@
     "url": "git+https://github.com/klee-contrib/codoc.git"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^3.1.1",
     "@inquirer/prompts": "^8.2.0",
     "@oclif/core": "^4",
-    "@puppeteer/browsers": "^2.13.2",
     "@oclif/plugin-autocomplete": "^3.2.40",
     "@oclif/plugin-help": "^6",
     "@oclif/plugin-version": "^2.2.36",
+    "@puppeteer/browsers": "^2.13.2",
     "dotenv": "^17.4.2",
     "execa": "^9.6.1",
     "js-yaml": "^4.2.0",
@@ -80,12 +81,11 @@
     }
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown && oclif manifest",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint",
     "lint-fix": "oxlint --fix",
     "prepack": "tsdown && oclif manifest",
-    "postpack": "shx rm -f oclif.manifest.json",
     "posttest": "npm run lint",
     "test": "node --import ./test/register.mjs --test \"test/**/*.test.ts\"",
     "test:update-snapshots": "node --import ./test/register.mjs --test --test-update-snapshots \"test/**/*.test.ts\"",

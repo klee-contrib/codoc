@@ -1,8 +1,8 @@
 import {Args, Command, Flags} from '@oclif/core'
 
-import {confluenceEnvRequirements} from '../config/codoc-config-atlassian.js'
 import {loadRawConfig} from '../config/codoc-config-raw.js'
-import {ensureEnvVars} from '../services/ensure-env.js'
+import {confluenceAccessInputs, INPUTS} from '../config/codoc-inputs.js'
+import {requestAll, resolveInputs} from '../services/resolve-inputs.js'
 import {publish} from '../use-cases/publish/publish.js'
 
 export default class Publish extends Command {
@@ -28,7 +28,7 @@ export default class Publish extends Command {
     'keep-existing': Flags.boolean({
       allowNo: true,
       description:
-        "Si une entrée codoc.yaml existe déjà pour ce chemin, la met à jour en place (--keep-existing, " +
+        'Si une entrée codoc.yaml existe déjà pour ce chemin, la met à jour en place (--keep-existing, ' +
         'valeurs existantes comme défauts) ou en crée une séparée (--no-keep-existing). ' +
         'Non fourni : demande le cas échéant.',
     }),
@@ -38,7 +38,13 @@ export default class Publish extends Command {
         'existante, sinon prompt. L’environnement est déduit de son domaine.',
     }),
     title: Flags.string({
-      description: 'Titre de la page Confluence (fichier unique uniquement). Par défaut : celui de la config existante, sinon le H1 du fichier.',
+      description:
+        'Titre de la page Confluence (fichier unique uniquement). Par défaut : celui de la config existante, sinon le H1 du fichier.',
+    }),
+    prefix: Flags.string({
+      description:
+        'Préfixe ajouté devant le titre de la page (ou de chaque page, pour un dossier). Par défaut : ' +
+        'celui de la config existante, sinon aucun (prompt, vide accepté).',
     }),
     'maintained-in': Flags.string({
       options: ['code', 'confluence'],
@@ -52,13 +58,15 @@ export default class Publish extends Command {
   async run() {
     const {args, flags} = await this.parse(Publish)
 
-    await ensureEnvVars(confluenceEnvRequirements(loadRawConfig().atlassian?.environments))
+    const access = confluenceAccessInputs(loadRawConfig().atlassian?.environments)
+    const {docPath} = await resolveInputs({...access, ...INPUTS}, {...requestAll(access), docPath: {flag: args.path}})
 
-    await publish(args.path ?? '', {
+    await publish(docPath, {
       inConfig: flags['in-config'],
       keepExisting: flags['keep-existing'],
       parentPage: flags['parent-page'],
       title: flags.title,
+      prefix: flags.prefix,
       maintainedIn: flags['maintained-in'],
     })
   }

@@ -6,7 +6,7 @@ import {closeDrawioRenderer} from '../../services/conversion/confluenceToMarkdow
 import {loadPublishState, PageState, savePublishState} from '../../services/lock/lock-file.js'
 import {log} from '../../services/log/logger.js'
 import {getDefaultBranch} from '../../services/git/default-branch.js'
-import {createRl, resolveConfirm} from '../../services/prompt.js'
+import {resolveInputs} from '../../services/resolve-inputs.js'
 import {DocTarget, listDocumentTargets} from '../shared/list-documents.js'
 import {EnvRegistry} from '../shared/confluence-client-registry.js'
 import {selectEnvs} from '../shared/env-select.js'
@@ -36,7 +36,9 @@ export async function sync(opts: SyncOptions = {}): Promise<void> {
     log.blank()
   }
   if (opts.confirm === false) {
-    log.info0("--no-confirm : les suppressions et adoptions nécessitant confirmation sont refusées (rien de risqué n'est fait).")
+    log.info0(
+      "--no-confirm : les suppressions et adoptions nécessitant confirmation sont refusées (rien de risqué n'est fait).",
+    )
     log.blank()
   }
 
@@ -65,16 +67,17 @@ export async function sync(opts: SyncOptions = {}): Promise<void> {
 
   const assoc = associateByCodocId(scopedLock, entries)
 
-  const rl = createRl()
   const ctx: SyncCtx = {
     config,
     generatedAt: now,
     registry: new EnvRegistry(),
     envByKey,
     now,
-    confirm: (question) => resolveConfirm(rl, {flag: opts.confirm, question, default: false}),
+    confirm: async (decision) =>
+      (await resolveInputs({decision}, {decision: {flag: opts.confirm, suggested: false}})).decision,
     codeTargetsByCodocId,
     defaultBranch: await getDefaultBranch(),
+    lock: previousState,
   }
 
   const newPages: Record<string, PageState> = {...keptOutOfScope}
@@ -111,7 +114,6 @@ export async function sync(opts: SyncOptions = {}): Promise<void> {
       if (state) newPages[entry.codocId!] = state
     }
   } finally {
-    rl.close()
     await closeDrawioRenderer()
   }
 

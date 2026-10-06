@@ -2,6 +2,7 @@
 
 import path from 'path'
 
+import {syncDecisions} from '../../config/codoc-inputs.js'
 import {PROJECT_ROOT} from '../../config/codoc-paths.js'
 import {getFolderRef} from '../../services/confluence/folders.js'
 import {PageState} from '../../services/lock/lock-file.js'
@@ -40,9 +41,7 @@ export async function handleLockOrphan(ctx: SyncCtx, lock: PageState): Promise<P
       )
       return null
     }
-    const ok = await ctx.confirm(
-      `⚠️  "${lock.title}" : page Confluence introuvable ET retirée de la config. Supprimer la doc locale "${lock.sourceFile}" ? (perte définitive possible)`,
-    )
+    const ok = await ctx.confirm(syncDecisions.deleteLocalDoc(lock.title, lock.sourceFile))
     if (ok) {
       removePath(absLocal)
       log.itemCleaned(`Doc locale supprimée : ${lock.sourceFile}`)
@@ -53,10 +52,7 @@ export async function handleLockOrphan(ctx: SyncCtx, lock: PageState): Promise<P
   }
 
   // maintainedIn: code → supprimer la page distante (avec confirmation)
-  const warn = fileExists(absLocal) ? '' : ' (doc locale absente - perte définitive possible)'
-  const ok = await ctx.confirm(
-    `[DELETE] "${lock.title}" retirée de la config. Supprimer la page Confluence distante${warn} ?`,
-  )
+  const ok = await ctx.confirm(syncDecisions.deleteRemotePage(lock.title, !fileExists(absLocal)))
   if (!ok) {
     log.itemKept(`Conservée à distance : ${lock.title}`)
     return lock
@@ -156,7 +152,9 @@ export async function syncNew(ctx: SyncCtx, entry: SyncEntry): Promise<PageState
   const found: {id: string; type: 'folder' | 'page'} | undefined = page
     ? {id: String(page.id), type: 'page'}
     : entry.parentPageId
-      ? await client.folders.findByTitleUnderParent(entry.parentPageId, entry.title).then((f) => (f ? {...f, type: 'folder' as const} : undefined))
+      ? await client.folders
+          .findByTitleUnderParent(entry.parentPageId, entry.title)
+          .then((f) => (f ? {...f, type: 'folder' as const} : undefined))
       : undefined
 
   if (!found) {
@@ -166,7 +164,10 @@ export async function syncNew(ctx: SyncCtx, entry: SyncEntry): Promise<PageState
   }
 
   if (entry.parentPageId) {
-    const parentId = found.type === 'page' ? (await pageMeta(client, found.id))?.parentId : (await client.folders.get(found.id))?.parentId
+    const parentId =
+      found.type === 'page'
+        ? (await pageMeta(client, found.id))?.parentId
+        : (await client.folders.get(found.id))?.parentId
     if (parentId && parentId !== entry.parentPageId) {
       throw new Error(
         `"${entry.title}" : parent Confluence (${parentId}) ≠ config (${entry.parentPageId}). Revois la config.`,

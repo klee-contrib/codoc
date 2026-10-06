@@ -4,9 +4,11 @@
 import path from 'path'
 
 import {pageUrl} from '../../clients/confluence/utils/confluence-url.js'
+import {syncDecisions} from '../../config/codoc-inputs.js'
 import {renderConfluencePage} from '../../services/conversion/markdownToConfluence/index.js'
-import {LockChild, makePageState, PageState} from '../../services/lock/lock-file.js'
+import {findLockedRef, LockChild, makePageState, PageState, PublishState} from '../../services/lock/lock-file.js'
 import {log} from '../../services/log/logger.js'
+import {ConfirmInput} from '../../services/resolve-inputs.js'
 import {AppConfig, ConfluenceConfig} from '../../types/codoc-types.js'
 import {DocTarget} from '../shared/list-documents.js'
 import {EnvRegistry} from '../shared/confluence-client-registry.js'
@@ -15,10 +17,10 @@ import {renderRemotePageToLocal} from '../shared/render-remote-page.js'
 import {uploadPageAttachments} from './attachment-upload.js'
 import {parentNum, urlOf} from './sync-helpers.js'
 import {SyncEntry} from './sync-entries.js'
-import { ConfluenceClient } from '../../clients/confluence/confluence-client.js'
-import { createOrUpdatePage } from '../../services/confluence/pages.js'
-import { pushKeywordLabels } from '../../services/confluence/labels.js'
-import { createOrEnsureFolder } from '../../services/confluence/folders.js'
+import {ConfluenceClient} from '../../clients/confluence/confluence-client.js'
+import {createOrUpdatePage} from '../../services/confluence/pages.js'
+import {pushKeywordLabels} from '../../services/confluence/labels.js'
+import {createOrEnsureFolder} from '../../services/confluence/folders.js'
 
 // ─────────────────────────────── Contexte ───────────────────────────────
 
@@ -28,17 +30,26 @@ export interface SyncCtx {
   registry: EnvRegistry
   envByKey: Map<string, ConfluenceConfig>
   now: string
-  confirm: (question: string) => Promise<boolean>
+  confirm: (decision: ConfirmInput) => Promise<boolean>
   /** Cibles maintenues côté code (dont l'expansion des globs), groupées par codocId. */
   codeTargetsByCodocId: Map<string, DocTarget[]>
   /** Branche par défaut du repo (résolue 1 fois) - pour réécrire les liens code en URLs GitLab. */
   defaultBranch: string
+  /** État de lock complet (tous environnements), chargé une fois par sync.ts avant la boucle - permet
+   * de résoudre un lien .md vers une page déjà publiée. NB : capturé au début du run, donc un lien
+   * (dans un fichier A) vers un fichier B publié PLUS TÔT dans CE MÊME run ne le "voit" pas encore -
+   * il se rabat sur le lien GitLab avec avertissement (comme tout autre cache miss). Limitation
+   * connue et acceptée (même famille que les autres dépendances au lock), pas résolue ici. */
+  lock: PublishState
 }
 
 // ─────────────────────────────── Helpers ───────────────────────────────
 
 // Titre + parent d'une page, ou undefined si absente.
-export async function pageMeta(client: ConfluenceClient, pageId: string): Promise<{title: string; parentId?: string} | undefined> {
+export async function pageMeta(
+  client: ConfluenceClient,
+  pageId: string,
+): Promise<{title: string; parentId?: string} | undefined> {
   const p = await fetchPageOrUndefined(client, pageId)
   return p ? {title: p.title, parentId: p.parentId} : undefined
 }
@@ -57,6 +68,7 @@ function renderTarget(
     gitlab: {baseUrl: ctx.config.gitlab.baseUrl, branch: ctx.defaultBranch},
     generatedAt: ctx.generatedAt,
     generateSummary: t.generateSummary,
+    resolveMdLink: (sourceFile) => findLockedRef(ctx.lock, t.env.key, sourceFile)?.confluenceUrl,
   })
 }
 
@@ -73,10 +85,7 @@ async function publishPage(
   existingId: string | undefined,
 ): Promise<{id: string; _links?: {webui?: string}}> {
   const onTitleConflict = (_existingPageId: string, existingUrl: string) =>
-    confirm(
-      `⚠️  Une page "${t.title}" existe déjà (hors de l'arborescence suivie dans codoc.lock) : ${existingUrl}\n` +
-        `   L'adopter et écraser son contenu par celui généré localement ?`,
-    )
+    confirm(syncDecisions.adoptPage(t.title, existingUrl))
   const published = await createOrUpdatePage(client, t.title, xml, parentId, existingId, onTitleConflict)
   await uploadPageAttachments(client, published.id, xml, t.imagesDir, attachments)
   await pushKeywordLabels(client, published.id, t.keywords)
@@ -87,7 +96,7 @@ async function publishPage(
 export async function assertParentExists(client: ConfluenceClient, entry: SyncEntry): Promise<void> {
   const pid = entry.parentPageId
   if (!pid) return
-  if (await pageMeta(client, pid) != undefined) return
+  if ((await pageMeta(client, pid)) != undefined) return
   if (await client.folders.exists(pid)) return
   throw new Error(
     `"${entry.path}" : parentPageId ${pid} introuvable sur l'environnement "${entry.env.key}". Revois la config.`,
@@ -211,7 +220,9 @@ export async function publishCode(
   const client = await ctx.registry.connect(env)
   const targets = ctx.codeTargetsByCodocId.get(entry.codocId!) ?? []
   if (!targets.length) {
-    log.warning1(`[SKIPPED] "${entry.path}" (codocId ${entry.codocId}) : dossier/fichier local vide ou introuvable - rien à publier, ignorée.`)
+    log.warning1(
+      `[SKIPPED] "${entry.path}" (codocId ${entry.codocId}) : dossier/fichier local vide ou introuvable - rien à publier, ignorée.`,
+    )
     return undefined
   }
 
@@ -222,7 +233,7 @@ export async function publishCode(
 
   const t = targets[0]
   const {xml, attachments} = renderTarget(ctx, t)
-  const remote = existingId ? await pageMeta(client, existingId) != undefined : false
+  const remote = existingId ? (await pageMeta(client, existingId)) != undefined : false
   log.itemPublished({env: env.key, isUpdate: remote, title: t.title})
   const published = await publishPage(ctx.confirm, client, t, xml, attachments, parentNum(t.parentPageId), existingId)
   return makePageState({
@@ -237,7 +248,12 @@ export async function publishCode(
 }
 
 // Importe une page distante connue (par id) vers le local + état de lock confluence.
-export async function pullPageToLocal(ctx: SyncCtx, entry: SyncEntry, client: ConfluenceClient, id: string): Promise<PageState> {
+export async function pullPageToLocal(
+  ctx: SyncCtx,
+  entry: SyncEntry,
+  client: ConfluenceClient,
+  id: string,
+): Promise<PageState> {
   const page = await client.pages.fetchPage(id)
   await renderRemotePageToLocal(client, page, entry.relPath, entry.imagesDir)
   return confluenceState(entry, entry.env, id, page.title, ctx.now)

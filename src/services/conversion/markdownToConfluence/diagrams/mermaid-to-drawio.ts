@@ -1,7 +1,12 @@
+import dagre from '@dagrejs/dagre'
+
 import {escapeAttr} from '../../shared/xml-escaping.js'
 
-// Mermaid (graph/flowchart) → XML draw.io. 3 étapes : parse → layout (positions) → rendu.
-// Layout : colonnes par subgraph si présents, sinon cascade par niveaux (parents → enfants).
+// Mermaid (graph/flowchart, ou classDiagram) → XML draw.io. 3 étapes : parse → layout (positions) → rendu.
+// Layout : colonnes par subgraph si présents, sinon dagre (même moteur de layout par rangs que
+// Mermaid utilise lui-même en interne) - aucun réglage requis pour un résultat correct.
+// classDiagram (parseClassDiagram) produit le même ParsedGraph qu'un flowchart (parseFlowchart) -
+// layout et rendu ci-dessous sont entièrement partagés entre les deux.
 
 // ════════════════════════════ Modèle ════════════════════════════
 
@@ -13,6 +18,8 @@ interface Node {
   link?: string // URL (directive click)
   fill?: string // couleur de remplissage (directive style)
   stroke?: string
+  dashed?: boolean // bordure en pointillés (directive style/classDef `stroke-dasharray`)
+  size?: {width: number; height: number} // estimé depuis le texte (mode dagre uniquement) - voir estimateNodeSize
 }
 
 interface Group {
@@ -24,6 +31,7 @@ interface Edge {
   from: string
   to: string
   label?: string
+  dashed?: boolean // ligne en pointillés (flèche mermaid `-.->`, ex. renvoi inter-domaines comu-tools)
 }
 
 interface ParsedGraph {
@@ -43,22 +51,143 @@ const RE_NODE_RECT = /^(\w+)\["([\s\S]*)"\]$/
 const RE_EDGE = /^(\w+)\s*-->\s*(\w+)$/
 const RE_EDGE_PIPE_LABEL = /^(\w+)\s*-->\s*\|([^|]*)\|\s*(\w+)$/
 const RE_EDGE_MID_LABEL = /^(\w+)\s*--(?!>)\s*(.+?)\s*-->\s*(\w+)$/
+// Flèche en pointillés (ex. renvoi inter-domaines comu-tools) - sans libellé, seule variante émise à ce jour.
+const RE_EDGE_DASHED = /^(\w+)\s*-\.->\s*(\w+)$/
 const RE_CLICK = /^click\s+(\w+)\s+href\s+"([^"]+)"/
 const RE_STYLE = /^style\s+(\w+)\s+(.+)$/
 const RE_CLASS_DEF = /^classDef\s+(\w+)\s+(.+)$/
 const RE_CLASS = /^class\s+([\w,\s]+)\s+(\w+)\s*;?$/
 
-interface FillStroke {fill?: string; stroke?: string}
+// classDiagram (UML) - syntaxe Mermaid distincte de graph/flowchart ci-dessus (`class Nom{…}` en
+// bloc multi-lignes, relations avec cardinalités entre guillemets). Sans rapport avec RE_CLASS_DEF/
+// RE_CLASS ci-dessus, qui sont des directives de style flowchart (`classDef`/`class A,B style`).
+const RE_CLASSDIAGRAM_HEADER = /^classDiagram\b/
+const RE_UML_CLASS_START = /^class\s+(\w+)\s*\{$/
+// `class Nom:::styleName` : référence à une classe sans corps (typiquement une classe définie dans
+// un autre diagramme/fichier) - déclare le nœud (sans champs), le nom du style est ignoré en
+// l'absence de `classDef` correspondant dans ces diagrammes.
+const RE_UML_CLASS_CSS_REF = /^class\s+(\w+):::\w+$/
+const RE_UML_STEREOTYPE = /^(?:<<(\w+)>>|&lt;&lt;(\w+)&gt;&gt;)$/
+const RE_UML_ASSOC = /^(\w+)\s+"([^"]*)"\s*-->\s*"([^"]*)"\s*(\w+)$/
+const RE_UML_INHERIT = /^(\w+)\s*<\|--\s*(\w+)$/
 
-/** Extrait `fill` et `stroke` d'une chaîne de directive style (`fill:#xxx,stroke:#yyy,…`). */
+interface FillStroke {fill?: string; stroke?: string; dashed?: boolean}
+
+/** Extrait `fill`, `stroke` et `stroke-dasharray` d'une chaîne de directive style (`fill:#xxx,stroke:#yyy,…`). */
 function parseFillStroke(directive: string): FillStroke {
   return {
     fill: directive.match(/fill:\s*([^,;]+)/)?.[1]?.trim(),
     stroke: directive.match(/stroke:\s*([^,;]+)/)?.[1]?.trim(),
+    // `|| undefined` important, pas cosmétique : sans lui, un style qui NE mentionne PAS
+    // stroke-dasharray renverrait `dashed: false` (pas `undefined`), ce qui casserait la priorité
+    // `inline?.dashed ?? fromClass?.dashed` ci-dessous (un style inline sans rapport avec le
+    // pointillé écraserait silencieusement un `dashed: true` hérité d'un classDef).
+    dashed: /stroke-dasharray\s*:/.test(directive) || undefined,
   }
 }
 
+/** Dispatch selon le type de diagramme, détecté sur sa première ligne significative. */
 function parseMermaid(mermaid: string): ParsedGraph {
+  const firstLine = mermaid
+    .split('\n')
+    .map((l) => l.trim())
+    .find((l) => l && !l.startsWith('%%'))
+  return firstLine && RE_CLASSDIAGRAM_HEADER.test(firstLine) ? parseClassDiagram(mermaid) : parseFlowchart(mermaid)
+}
+
+/** Cardinalités d'une association (`"0..1" --> "0..*"`) → libellé unique au milieu de l'arête. */
+function classAssocLabel(fromMult: string, toMult: string): string | undefined {
+  if (fromMult && toMult) return `${fromMult} → ${toMult}`
+  return fromMult || toMult || undefined
+}
+
+/** Nœuds effectivement déclarés → arêtes valides (source ET cible connues) ; partagé flowchart/classDiagram. */
+function splitValidEdges(nodes: Node[], edges: Edge[]): {known: Set<string>; validEdges: Edge[]; edgesMissingNodes: Edge[]} {
+  const known = new Set(nodes.map((n) => n.id))
+  return {
+    known,
+    validEdges: edges.filter((e) => known.has(e.from) && known.has(e.to)),
+    edgesMissingNodes: edges.filter((e) => !(known.has(e.from) && known.has(e.to))),
+  }
+}
+
+/**
+ * `classDiagram` : classes (`class Nom{ … }`, bloc multi-lignes) → nœuds dont le libellé HTML liste
+ * le nom (gras) puis chaque ligne du corps (stéréotype `<<Enum>>`/`&lt;&lt;Enum&gt;&gt;` en «Enum»,
+ * champs tels quels). Relations reconnues : association avec cardinalités (`A "m1" --> "m2" B`) et
+ * héritage (`A <|-- B`). Toute autre ligne évoquant une relation (`--`/`..`) est signalée plutôt que
+ * silencieusement ignorée, comme pour un flowchart.
+ */
+function parseClassDiagram(mermaid: string): ParsedGraph {
+  const nodes: Node[] = []
+  const edges: Edge[] = []
+  const unparsedEdgeLines: string[] = []
+  let current: {id: string; parts: string[]} | undefined
+
+  const flushCurrentClass = (): void => {
+    if (!current) return
+    nodes.push({id: current.id, label: current.parts.join('<br/>'), shape: 'rect', group: -1})
+    current = undefined
+  }
+
+  for (const raw of mermaid.split('\n')) {
+    const line = raw.trim()
+    if (!line || line.startsWith('```') || line.startsWith('%%')) continue
+    if (RE_CLASSDIAGRAM_HEADER.test(line) || line.startsWith('direction ')) continue
+
+    if (current) {
+      if (line === '}') {
+        flushCurrentClass()
+      } else {
+        const stereotype = line.match(RE_UML_STEREOTYPE)
+        current.parts.push(stereotype ? `«${stereotype[1] ?? stereotype[2]}»` : line)
+      }
+      continue
+    }
+
+    const classStart = line.match(RE_UML_CLASS_START)
+    if (classStart) {
+      current = {id: classStart[1], parts: [`<b>${classStart[1]}</b>`]}
+      continue
+    }
+
+    const cssRef = line.match(RE_UML_CLASS_CSS_REF)
+    if (cssRef) {
+      nodes.push({id: cssRef[1], label: `<b>${cssRef[1]}</b>`, shape: 'rect', group: -1})
+      continue
+    }
+
+    const assoc = line.match(RE_UML_ASSOC)
+    if (assoc) {
+      edges.push({from: assoc[1], to: assoc[4], label: classAssocLabel(assoc[2], assoc[3])})
+      continue
+    }
+
+    const inherit = line.match(RE_UML_INHERIT)
+    if (inherit) {
+      edges.push({from: inherit[1], to: inherit[2]})
+      continue
+    }
+
+    if (line.includes('--') || line.includes('..')) {
+      unparsedEdgeLines.push(line)
+    }
+  }
+  flushCurrentClass() // filet de sécurité si un bloc `class{` n'a jamais été refermé.
+
+  const {known, validEdges, edgesMissingNodes} = splitValidEdges(nodes, edges)
+  const droppedEdges = [
+    ...edgesMissingNodes.map((e) => {
+      const missing = [e.from, e.to].filter((id) => !known.has(id))
+      return `relation "${e.from} --> ${e.to}" ignorée : classe(s) non déclarée(s) (${missing.join(', ')})`
+    }),
+    ...unparsedEdgeLines.map((line) => `ligne ignorée (syntaxe de relation non reconnue) : "${line}"`),
+  ]
+
+  return {groups: [], nodes, edges: validEdges, direction: 'LR', droppedEdges}
+}
+
+function parseFlowchart(mermaid: string): ParsedGraph {
   const groups: Group[] = []
   const nodes: Node[] = []
   const edges: Edge[] = []
@@ -137,6 +266,12 @@ function parseMermaid(mermaid: string): ParsedGraph {
       continue
     }
 
+    const dashedEdge = line.match(RE_EDGE_DASHED)
+    if (dashedEdge) {
+      edges.push({from: dashedEdge[1], to: dashedEdge[2], dashed: true})
+      continue
+    }
+
     const stadium = line.match(RE_NODE_STADIUM)
     const rect = stadium ? null : line.match(RE_NODE_RECT)
     const m = stadium ?? rect
@@ -147,7 +282,10 @@ function parseMermaid(mermaid: string): ParsedGraph {
       continue
     }
 
-    if (line.includes('-->')) {
+    // `.->` couvre aussi une variante pointillée avec libellé (ex. `A -. texte .-> B`), non supportée à ce
+    // jour (aucun usage actuel) - signalée plutôt que silencieusement perdue, comme les autres arêtes non
+    // reconnues ci-dessous.
+    if (line.includes('-->') || line.includes('.->')) {
       unparsedEdgeLines.push(line)
     }
   }
@@ -163,17 +301,15 @@ function parseMermaid(mermaid: string): ParsedGraph {
     const fromClass = className ? classDefs.get(className) : undefined
     n.fill = inline?.fill ?? fromClass?.fill
     n.stroke = inline?.stroke ?? fromClass?.stroke
+    n.dashed = inline?.dashed ?? fromClass?.dashed
   }
 
-  const known = new Set(nodes.map((n) => n.id))
-  const validEdges = edges.filter((e) => known.has(e.from) && known.has(e.to))
+  const {known, validEdges, edgesMissingNodes} = splitValidEdges(nodes, edges)
   const droppedEdges = [
-    ...edges
-      .filter((e) => !(known.has(e.from) && known.has(e.to)))
-      .map((e) => {
-        const missing = [e.from, e.to].filter((id) => !known.has(id))
-        return `arête "${e.from} --> ${e.to}" ignorée : nœud(s) non déclaré(s) (${missing.join(', ')}) - déclarez-les avec ${missing[0]}["label"]`
-      }),
+    ...edgesMissingNodes.map((e) => {
+      const missing = [e.from, e.to].filter((id) => !known.has(id))
+      return `arête "${e.from} --> ${e.to}" ignorée : nœud(s) non déclaré(s) (${missing.join(', ')}) - déclarez-les avec ${missing[0]}["label"]`
+    }),
     ...unparsedEdgeLines.map((line) => `ligne ignorée (syntaxe d'arête non reconnue, ex. arêtes chaînées ou label avec "|") : "${line}"`),
   ]
 
@@ -183,108 +319,26 @@ function parseMermaid(mermaid: string): ParsedGraph {
 // ════════════════════════════ Layout ════════════════════════════
 
 interface DrawioLayout {
-  /** Pas horizontal (px) : entre colonnes/niveaux en LR. */
+  /** Pas horizontal (px) : entre colonnes de subgraphs, et espacement entre rangs dagre (`ranksep`). */
   colWidth: number
-  /** Pas vertical (px) : entre cases empilées d'un même niveau en LR. */
+  /** Pas vertical (px) : entre cases empilées d'un subgraph, et espacement entre nœuds d'un même rang dagre (`nodesep`). */
   rowStep: number
+  /** Taille par défaut - mode subgraphs uniquement (le mode dagre dimensionne chaque nœud selon son texte, voir estimateNodeSize). */
   nodeWidth: number
   nodeHeight: number
-  /** Tracé des flèches : courbe (défaut), angle droit arrondi, ou ligne droite. */
-  edgeStyle: 'curved' | 'orthogonal' | 'straight'
-  /** Ancrage des flèches : "side" = côtés alignés au flux (défaut), "auto" = flottant (choix draw.io). */
-  edgeAnchor: 'auto' | 'side'
 }
 
 const DEFAULT_LAYOUT: DrawioLayout = {
-  colWidth: 480,
-  rowStep: 110,
+  colWidth: 70,
+  rowStep: 30,
   nodeWidth: 280,
   nodeHeight: 60,
-  edgeStyle: 'curved',
-  edgeAnchor: 'side',
 }
 
 const TITLE_HEIGHT = 30
 const MARGIN = 40
 
 type Pos = {x: number; y: number}
-type Adjacency = Map<string, string[]>
-
-/** Listes d'adjacence (parents / enfants) du graphe, restreintes aux nœuds connus. */
-function buildAdjacency(nodes: Node[], edges: Edge[]): {preds: Adjacency; succs: Adjacency} {
-  const idSet = new Set(nodes.map((n) => n.id))
-  const preds: Adjacency = new Map(nodes.map((n) => [n.id, []]))
-  const succs: Adjacency = new Map(nodes.map((n) => [n.id, []]))
-  for (const {from, to} of edges) {
-    if (!idSet.has(from) || !idSet.has(to)) continue
-    succs.get(from)!.push(to)
-    preds.get(to)!.push(from)
-  }
-  return {preds, succs}
-}
-
-/** Retire les clés `undefined` pour qu'elles n'écrasent pas les valeurs de DEFAULT_LAYOUT au merge. */
-function cleanLayout(layout: Partial<DrawioLayout>): Partial<DrawioLayout> {
-  return Object.fromEntries(Object.entries(layout).filter(([, v]) => v !== undefined)) as Partial<DrawioLayout>
-}
-
-/** Niveau de chaque nœud = max(niveaux parents)+1 (0 si racine). Cycles détectés par DFS et ignorés pour garder la cascade gauche→droite. */
-function assignLevels(nodes: Node[], preds: Adjacency, succs: Adjacency): Map<string, number> {
-  // 1. Repère les arêtes retour : `u → v` où v est un ancêtre encore dans la pile DFS.
-  const backEdges = new Set<string>()
-  const state = new Map<string, 0 | 1>() // 0 = en cours (dans la pile), 1 = terminé
-  const visit = (u: string): void => {
-    state.set(u, 0)
-    for (const v of succs.get(u) ?? []) {
-      const s = state.get(v)
-      if (s === 0) backEdges.add(`${u}->${v}`)
-      else if (s === undefined) visit(v)
-    }
-    state.set(u, 1)
-  }
-  const isRoot = (id: string) => (preds.get(id)?.length ?? 0) === 0
-  for (const n of nodes) if (isRoot(n.id) && !state.has(n.id)) visit(n.id) // racines d'abord
-  for (const n of nodes) if (!state.has(n.id)) visit(n.id) // composantes purement cycliques
-
-  // 2. Plus long chemin sur le DAG privé des arêtes retour (mémoïsé, donc terminant).
-  const level = new Map<string, number>()
-  const levelOf = (id: string): number => {
-    const cached = level.get(id)
-    if (cached !== undefined) return cached
-    let maxParent = -1
-    for (const p of preds.get(id) ?? []) {
-      if (backEdges.has(`${p}->${id}`)) continue // arête retour ignorée
-      maxParent = Math.max(maxParent, levelOf(p))
-    }
-    const lv = maxParent + 1 // aucun parent « avant » → 0
-    level.set(id, lv)
-    return lv
-  }
-  for (const n of nodes) levelOf(n.id)
-  return level
-}
-
-/** Ordonne verticalement chaque colonne pour limiter les croisements (méthode barycentrique, 2 passes aller-retour). */
-function orderColumns(columns: string[][], preds: Adjacency, succs: Adjacency, level: Map<string, number>): void {
-  const maxLevel = columns.length - 1
-  const order = new Map<string, number>()
-  columns.forEach((col) => col.forEach((id, i) => order.set(id, i)))
-
-  // Position moyenne des voisins situés sur la couche `atLevel` (sinon : position actuelle).
-  const barycenter = (id: string, neighbors: string[], atLevel: number): number => {
-    const ns = neighbors.filter((n) => level.get(n) === atLevel)
-    return ns.length ? ns.reduce((s, n) => s + order.get(n)!, 0) / ns.length : order.get(id)!
-  }
-  const sortColumn = (l: number, adjacency: Adjacency, atLevel: number): void => {
-    columns[l].sort((a, b) => barycenter(a, adjacency.get(a)!, atLevel) - barycenter(b, adjacency.get(b)!, atLevel))
-    columns[l].forEach((id, i) => order.set(id, i))
-  }
-
-  for (let pass = 0; pass < 2; pass++) {
-    for (let l = 1; l <= maxLevel; l++) sortColumn(l, preds, l - 1)
-    for (let l = maxLevel - 1; l >= 0; l--) sortColumn(l, succs, l + 1)
-  }
-}
 
 /** Mode subgraphs : une colonne par subgraph, cases empilées dans l'ordre. */
 function columnPositions(nodes: Node[], lo: DrawioLayout): Map<string, Pos> {
@@ -299,64 +353,81 @@ function columnPositions(nodes: Node[], lo: DrawioLayout): Map<string, Pos> {
   return positions
 }
 
-/** Mode cascade : placement par niveaux (parents à gauche, enfants à droite en LR). */
-function levelPositions(
-  nodes: Node[],
-  edges: Edge[],
-  direction: string,
-  lo: DrawioLayout,
-): Map<string, Pos> {
+/**
+ * Estime largeur/hauteur d'une boîte à partir de son texte HTML (`<br/>` = saut de ligne, balises
+ * ignorées) - dagre a besoin d'une taille par nœud pour espacer correctement. Pas de vraie mesure de
+ * police (aucun navigateur ici) : approximation proportionnelle au texte, plafonnée en largeur (le
+ * nœud reste en `whiteSpace=wrap` - voir styleFor - donc un texte très long se réenroule plutôt que
+ * de déborder ou de gonfler la boîte à l'infini).
+ */
+function estimateNodeSize(label: string): {width: number; height: number} {
+  const CHAR_WIDTH = 6.5
+  const LINE_HEIGHT = 18
+  const PAD_X = 24
+  const PAD_Y = 16
+  const MIN_WIDTH = 120
+  const MAX_WIDTH = 320
+  const MIN_HEIGHT = 40
+
+  const rawLines = label.split(/<br\s*\/?>/i).map((l) => l.replace(/<[^>]+>/g, ''))
+  const longest = Math.max(0, ...rawLines.map((l) => l.length))
+  const width = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.round(longest * CHAR_WIDTH) + PAD_X))
+
+  const usableWidth = width - PAD_X
+  const wrappedLines = rawLines.reduce((sum, l) => sum + Math.max(1, Math.ceil((l.length * CHAR_WIDTH) / usableWidth)), 0)
+  const height = Math.max(MIN_HEIGHT, wrappedLines * LINE_HEIGHT + PAD_Y)
+
+  return {width, height}
+}
+
+/** Mermaid `TD` est un synonyme historique de `TB` ; direction absente/invalide → `LR` (défaut Mermaid). */
+function dagreRankDir(direction: string): 'TB' | 'BT' | 'LR' | 'RL' {
+  if (direction === 'TD') return 'TB'
+  return direction === 'TB' || direction === 'BT' || direction === 'LR' || direction === 'RL' ? direction : 'LR'
+}
+
+/**
+ * Mode cascade (pas de subgraphs) : layout automatique via dagre - le même moteur de layout par
+ * rangs que Mermaid utilise lui-même en interne pour flowchart/classDiagram, d'où un résultat
+ * nettement plus proche de l'esthétique Mermaid que l'ancien placement fait main (BFS + tri
+ * barycentrique par niveaux). Dimensionne aussi chaque `node.size` au passage (repris par nodeCell -
+ * dagre a besoin d'une taille par nœud EN ENTRÉE du layout, donc calculée ici plutôt qu'au rendu).
+ */
+function dagreLevelPositions(nodes: Node[], edges: Edge[], direction: string, lo: DrawioLayout): Map<string, Pos> {
   if (!nodes.length) return new Map()
 
-  const {preds, succs} = buildAdjacency(nodes, edges)
-  const level = assignLevels(nodes, preds, succs)
-  const maxLevel = Math.max(0, ...level.values())
+  const g = new dagre.graphlib.Graph()
+  g.setGraph({rankdir: dagreRankDir(direction), ranksep: lo.colWidth, nodesep: lo.rowStep, marginx: MARGIN, marginy: MARGIN})
+  g.setDefaultEdgeLabel(() => ({}))
 
-  // Colonnes par niveau (ordre d'insertion initial), puis tri anti-croisements.
-  const columns: string[][] = Array.from({length: maxLevel + 1}, () => [])
-  for (const n of nodes) columns[level.get(n.id)!].push(n.id)
-  orderColumns(columns, preds, succs, level)
+  for (const node of nodes) {
+    node.size = estimateNodeSize(node.label)
+    g.setNode(node.id, {width: node.size.width, height: node.size.height})
+  }
+  // `edges` vient toujours de parseMermaid() (validEdges, déjà filtré par splitValidEdges) - pas
+  // besoin de revérifier ici que source/cible sont des nœuds connus.
+  for (const e of edges) g.setEdge(e.from, e.to)
 
-  // Axe "niveau" = horizontal en LR/RL, vertical en TB/BT ; RL/BT inversent le sens.
-  const horizontal = direction === 'LR' || direction === 'RL'
-  const reverse = direction === 'RL' || direction === 'BT'
-  const mainStep = horizontal ? lo.colWidth : lo.rowStep
-  const crossStep = horizontal ? lo.rowStep : lo.colWidth
-  const crossCenter = horizontal ? 400 : 600
+  dagre.layout(g)
 
   const positions = new Map<string, Pos>()
-  for (let l = 0; l <= maxLevel; l++) {
-    const col = columns[l]
-    const span = (col.length - 1) * crossStep
-    const mainIdx = reverse ? maxLevel - l : l
-    col.forEach((id, i) => {
-      const main = MARGIN + mainIdx * mainStep
-      const cross = crossCenter + i * crossStep - span / 2 // colonne centrée
-      positions.set(id, horizontal ? {x: main, y: cross} : {x: cross, y: main})
-    })
+  for (const node of nodes) {
+    const gn = g.node(node.id)
+    // dagre positionne par centre ; nodeCell (rendu) attend le coin haut-gauche.
+    positions.set(node.id, {x: gn.x - gn.width / 2, y: gn.y - gn.height / 2})
   }
   return positions
 }
 
 // ════════════════════════════ Rendu ════════════════════════════
 
-/** Tracé (routage) de la flèche selon le style choisi. */
-function edgeRouting(kind: DrawioLayout['edgeStyle']): string {
-  const arrow = 'html=1;endArrow=block;orthogonalLoop=1;jettySize=auto;'
-  switch (kind) {
-    case 'straight':
-      return arrow
-    case 'orthogonal':
-      return `edgeStyle=orthogonalEdgeStyle;rounded=1;${arrow}`
-    case 'curved':
-    default:
-      return `edgeStyle=orthogonalEdgeStyle;curved=1;${arrow}`
-  }
+/** Tracé (routage) de la flèche : orthogonal arrondi, le plus proche de l'esthétique Mermaid. */
+function edgeRouting(): string {
+  return 'edgeStyle=orthogonalEdgeStyle;curved=1;html=1;endArrow=block;orthogonalLoop=1;jettySize=auto;'
 }
 
-/** Points d'ancrage sortie/entrée : "auto" = flottant, "side" = côtés alignés au flux (inversé en RL/BT). */
-function edgeAnchorStyle(anchor: DrawioLayout['edgeAnchor'], direction: string): string {
-  if (anchor !== 'side') return ''
+/** Points d'ancrage sortie/entrée, alignés au flux (inversés en RL/BT). */
+function edgeAnchorStyle(direction: string): string {
   const horizontal = direction === 'LR' || direction === 'RL'
   const reverse = direction === 'RL' || direction === 'BT'
   let exit: [number, number]
@@ -375,12 +446,15 @@ function edgeAnchorStyle(anchor: DrawioLayout['edgeAnchor'], direction: string):
 function styleFor(node: Node): string {
   const base = 'whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=11;'
   const rounded = node.shape === 'stadium' ? 'rounded=1;arcSize=50;' : 'rounded=0;'
-  if (node.fill) return `${rounded}${base}fillColor=${node.fill};strokeColor=${node.stroke ?? '#666666'};`
-  return `${rounded}${base}` // pas de couleur déclarée → couleurs draw.io par défaut
+  const dash = node.dashed ? 'dashed=1;' : ''
+  if (node.fill) return `${rounded}${base}fillColor=${node.fill};strokeColor=${node.stroke ?? '#666666'};${dash}`
+  return `${rounded}${base}${dash}` // pas de couleur déclarée → couleurs draw.io par défaut
 }
 
 function nodeCell(node: Node, pos: Pos, lo: DrawioLayout): string {
-  const geo = `<mxGeometry x="${pos.x}" y="${pos.y}" width="${lo.nodeWidth}" height="${lo.nodeHeight}" as="geometry" />`
+  const width = node.size?.width ?? lo.nodeWidth
+  const height = node.size?.height ?? lo.nodeHeight
+  const geo = `<mxGeometry x="${pos.x}" y="${pos.y}" width="${width}" height="${height}" as="geometry" />`
   const style = styleFor(node)
   const label = escapeAttr(node.label)
 
@@ -422,28 +496,20 @@ export interface MermaidToDrawioResult {
   warnings: string[]
 }
 
-export function mermaidToDrawio(
-  mermaid: string,
-  diagramName = 'diagram',
-  layout: Partial<DrawioLayout> = {},
-): MermaidToDrawioResult {
-  const lo: DrawioLayout = {
-    ...DEFAULT_LAYOUT,
-    ...cleanLayout(layout),
-  }
-
+export function mermaidToDrawio(mermaid: string, diagramName = 'diagram'): MermaidToDrawioResult {
+  const lo = DEFAULT_LAYOUT
   const {groups, nodes, edges, direction, droppedEdges} = parseMermaid(mermaid)
 
-  // Subgraphs → colonnes par groupe (+ titres) ; sinon → cascade par niveaux.
-  const positions = groups.length ? columnPositions(nodes, lo) : levelPositions(nodes, edges, direction, lo)
+  // Subgraphs → colonnes par groupe (+ titres) ; sinon → layout dagre.
+  const positions = groups.length ? columnPositions(nodes, lo) : dagreLevelPositions(nodes, edges, direction, lo)
 
   const cells: string[] = []
   if (groups.length) groups.forEach((g, gi) => cells.push(titleCell(g, gi, lo)))
   for (const node of nodes) {
     cells.push(nodeCell(node, positions.get(node.id) ?? {x: MARGIN, y: MARGIN}, lo))
   }
-  const edgeStyle = edgeRouting(lo.edgeStyle) + edgeAnchorStyle(lo.edgeAnchor, direction)
-  edges.forEach((e, i) => cells.push(edgeCell(e.from, e.to, i, edgeStyle, e.label)))
+  const baseEdgeStyle = edgeRouting() + edgeAnchorStyle(direction)
+  edges.forEach((e, i) => cells.push(edgeCell(e.from, e.to, i, e.dashed ? `${baseEdgeStyle}dashed=1;` : baseEdgeStyle, e.label)))
 
   const xml = [
     `<mxfile host="app.diagrams.net" type="device">`,

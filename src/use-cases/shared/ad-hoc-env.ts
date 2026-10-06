@@ -1,9 +1,6 @@
-import {input} from '@inquirer/prompts'
-
-import {apiTokenGenerateUrl, confluenceEnvVarNames} from '../../config/codoc-config-atlassian.js'
-import {ensureEnvVar} from '../../services/ensure-env.js'
+import {adHocEnvInputs} from '../../config/codoc-inputs.js'
 import {log} from '../../services/log/logger.js'
-import {resolveConfirm, Rl} from '../../services/prompt.js'
+import {resolveInputs} from '../../services/resolve-inputs.js'
 import {ConfluenceConfig} from '../../types/codoc-types.js'
 import {addAtlassianEnvironment} from './codoc-yaml.js'
 import {envKeyFromDomain} from './env-select.js'
@@ -26,48 +23,40 @@ export async function resolveAdHocEnv(
   log.blank()
   log.warning1(`Environnement "${key}" (${baseUrl}) absent de codoc.yaml - saisie ponctuelle pour cette commande.`)
 
-  let spaceKey = knownSpaceKey?.trim() ?? ''
-  if (spaceKey) {
-    log.info1(`spaceKey "${spaceKey}" déduit de l'URL.`)
-  } else {
-    const spaceKeyRaw = await input({
-      message: requireSpaceKey
-        ? "  Clé de l'espace Confluence cible (spaceKey) :"
-        : "  Clé de l'espace Confluence (spaceKey) - optionnel pour un import isolé, Entrée pour ignorer :",
-    })
-    spaceKey = spaceKeyRaw.trim()
-  }
-  if (requireSpaceKey && !spaceKey) {
-    throw new Error('spaceKey requis pour publier sur un environnement non déclaré dans codoc.yaml.')
-  }
+  const urlSpaceKey = knownSpaceKey?.trim() || undefined
+  if (urlSpaceKey) log.info1(`spaceKey "${urlSpaceKey}" déduit de l'URL.`)
 
-  const {userVar, tokenVar} = confluenceEnvVarNames(key)
-  const envNote = `Environnement "${key}" (${baseUrl}) absent de codoc.yaml : sauvegardé dans .env-codoc si tu confirmes, ` +
-    `mais restera inutilisable tant que \`atlassian.environments.${key}\` n'est pas aussi déclaré (on te le proposera après).`
-
-  const username = await ensureEnvVar(userVar, {secret: false, hint: `Identifiant Atlassian (email) pour "${baseUrl}". ${envNote}`})
-  if (!username) throw new Error(`${userVar} requis pour interroger un environnement non déclaré dans codoc.yaml.`)
-
-  const apiToken = await ensureEnvVar(tokenVar, {hint: `Token API Atlassian pour "${baseUrl}". ${envNote}`, generateUrl: apiTokenGenerateUrl()})
-  if (!apiToken) throw new Error(`${tokenVar} requis pour interroger un environnement non déclaré dans codoc.yaml.`)
+  const answers = await resolveInputs(adHocEnvInputs(key, baseUrl), {
+    spaceKey: {flag: urlSpaceKey, when: requireSpaceKey},
+    isolatedSpaceKey: {flag: urlSpaceKey, optional: true, when: !requireSpaceKey},
+    username: {},
+    apiToken: {},
+  })
+  const spaceKey = answers.spaceKey ?? answers.isolatedSpaceKey ?? ''
 
   return {
     key,
     spaceKey,
-    env: {key, baseUrl, username, apiToken, spaceKey, jira: {}, drawio: {macroName: 'drawio'}},
+    env: {
+      key,
+      baseUrl,
+      username: answers.username,
+      apiToken: answers.apiToken,
+      spaceKey,
+      jira: {},
+      drawio: {macroName: 'drawio'},
+    },
   }
 }
 
-export async function offerPersistAdHocEnv(rl: Rl, adHoc: AdHocEnv): Promise<boolean> {
+export async function offerPersistAdHocEnv(adHoc: AdHocEnv): Promise<boolean> {
   const {key, env, spaceKey} = adHoc
 
-  const add = await resolveConfirm(rl, {
-    question: `Ajouter l'environnement "${key}" (${env.baseUrl}) à codoc.yaml, pour réutiliser ces identifiants la prochaine fois ?`,
-    default: true,
-  })
+  const {persist: add} = await resolveInputs(adHocEnvInputs(key, env.baseUrl), {persist: {suggested: true}})
 
   const manualHint =
-    `atlassian.environments.${key} : baseUrl: ${env.baseUrl}` + (spaceKey ? `, spaceKey: ${spaceKey}` : ', spaceKey: <à renseigner>')
+    `atlassian.environments.${key} : baseUrl: ${env.baseUrl}` +
+    (spaceKey ? `, spaceKey: ${spaceKey}` : ', spaceKey: <à renseigner>')
 
   if (!add) {
     log.warning1(
@@ -83,23 +72,27 @@ export async function offerPersistAdHocEnv(rl: Rl, adHoc: AdHocEnv): Promise<boo
     return false
   }
   if (result === 'exists') {
-    log.warning1(`Un environnement "${key}" existe déjà dans codoc.yaml - rien n'a été modifié. Vérifie qu'il correspond bien à ${env.baseUrl}.`)
+    log.warning1(
+      `Un environnement "${key}" existe déjà dans codoc.yaml - rien n'a été modifié. Vérifie qu'il correspond bien à ${env.baseUrl}.`,
+    )
     return false
   }
 
   log.success1(`[${result === 'created' ? 'CRÉÉ' : 'UPDATED'}] codoc.yaml : environnement "${key}" ajouté.`)
   if (!spaceKey) {
-    log.warning2("spaceKey non renseigné - complète-le dans codoc.yaml avant un futur `codoc publish`/`codoc sync` sur cet environnement.")
+    log.warning2(
+      'spaceKey non renseigné - complète-le dans codoc.yaml avant un futur `codoc publish`/`codoc sync` sur cet environnement.',
+    )
   }
   return true
 }
 
 /** Si un environnement ad-hoc est en jeu, propose de le persister ; renvoie false (à propager comme
  * un skip de l'intégration codoc.yaml) s'il n'a pas été persisté. */
-export async function confirmPersistAdHocEnvOrSkip(rl: Rl, adHoc: AdHocEnv | undefined): Promise<boolean> {
+export async function confirmPersistAdHocEnvOrSkip(adHoc: AdHocEnv | undefined): Promise<boolean> {
   if (!adHoc) return true
 
-  const persisted = await offerPersistAdHocEnv(rl, adHoc)
+  const persisted = await offerPersistAdHocEnv(adHoc)
   if (!persisted) {
     log.warning1("[SKIPPED] Doc non ajoutée à codoc.yaml : son environnement n'y est pas déclaré.")
     return false

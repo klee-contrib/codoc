@@ -1,13 +1,12 @@
 import {Command, Flags} from '@oclif/core'
 
-import {confluenceEnvRequirements} from '../config/codoc-config-atlassian.js'
 import {loadRawConfig} from '../config/codoc-config-raw.js'
-import {ensureEnvVars} from '../services/ensure-env.js'
+import {confluenceAccessInputs} from '../config/codoc-inputs.js'
+import {requestAll, resolveInputs} from '../services/resolve-inputs.js'
 import {sync} from '../use-cases/sync/sync.js'
 
 export default class Sync extends Command {
-  static description =
-    'Synchronise chaque doc locale et Confluence'
+  static description = 'Synchronise chaque doc locale et Confluence'
 
   static flags = {
     env: Flags.string({
@@ -26,7 +25,8 @@ export default class Sync extends Command {
   async run() {
     const {flags} = await this.parse(Sync)
 
-    await ensureEnvVars(confluenceEnvRequirements(loadRawConfig().atlassian?.environments))
+    const access = confluenceAccessInputs(loadRawConfig().atlassian?.environments)
+    await resolveInputs(access, requestAll(access))
 
     await sync({
       env: flags.env,

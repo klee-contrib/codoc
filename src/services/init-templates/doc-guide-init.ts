@@ -16,7 +16,7 @@ Chaque doc déclarée dans \`codoc.yaml\` a une "source de vérité" mentionnée
 
 ## Commandes
 
-Résolution des informations dans l'ordre **flag CLI** → **valeur déjà présente dans \`codoc.yaml\`** → **prompt console** (pas de mode CI détecté automatiquement - un pipeline doit fournir tout ce qu'il faut pour rester silencieux).
+Résolution des informations dans l'ordre **flag CLI** → **variable d'environnement ou valeur déjà présente dans \`codoc.yaml\`** → **prompt console**, uniquement dans un terminal interactif : ailleurs (CI), une question avec valeur par défaut prend cette valeur, sinon la commande échoue d'emblée en listant tout ce qui manque.
 
 ### \`codoc init\`
 

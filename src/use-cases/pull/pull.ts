@@ -1,23 +1,17 @@
 import path from 'path'
 
-import {input} from '@inquirer/prompts'
-
 import {ConfluencePage} from '../../clients/confluence/clients/pages-client.js'
 import {ConfluenceClient} from '../../clients/confluence/confluence-client.js'
 import {pageUrl} from '../../clients/confluence/utils/confluence-url.js'
 import {getCodocConfigOrEmpty, onlySingleEnv} from '../../config/codoc-config.js'
+import {INPUTS, inConfigInputs} from '../../config/codoc-inputs.js'
 import {PROJECT_ROOT} from '../../config/codoc-paths.js'
 import {generateRandomCodocId} from '../../services/codoc-id.js'
-import {
-  loadPublishState,
-  makePageState,
-  PublishState,
-  savePublishState,
-} from '../../services/lock/lock-file.js'
+import {loadPublishState, makePageState, PublishState, savePublishState} from '../../services/lock/lock-file.js'
 import {log} from '../../services/log/logger.js'
 import {slugify} from '../../services/slugify.js'
 import {toPosixPath} from '../../services/files-service.js'
-import {askWithDefault, createRl, resolveConfirm, resolveValue, Rl} from '../../services/prompt.js'
+import {resolveInputs} from '../../services/resolve-inputs.js'
 import {AppConfig, ConfluenceConfig, MaintainedIn} from '../../types/codoc-types.js'
 import {EnvRegistry} from '../shared/confluence-client-registry.js'
 import {appendToDocsConfig, buildYamlEntry, removeDocsConfigEntries} from '../shared/codoc-yaml.js'
@@ -31,7 +25,7 @@ import {cleanDocPath} from '../sync/sync-entries.js'
 import {parsePageUrl} from '../shared/parse-page-url.js'
 
 export interface PullFlags {
-  page?: string
+  page: string
   asFolder?: boolean
   keepExisting?: boolean
   inConfig?: boolean
@@ -95,7 +89,6 @@ interface ImportAnswers {
 /** Résout les informations d'import (chemin, titre, parent, maintien, images) : flag → config
  * (import existant si remplacement) → prompt. */
 async function collectImportAnswers(
-  rl: Rl,
   page: ConfluencePage,
   confluence: {defaultParentPageId?: string},
   existing: ExistingImport | undefined,
@@ -105,51 +98,37 @@ async function collectImportAnswers(
   // En remplacement, la config existante (yaml) fait foi pour les défauts - pas seulement le chemin.
   const kept = replaceExisting ? existing : undefined
 
-  const localPath = await resolveValue(rl, {
-    flag: flags.localPath,
-    config: kept?.sourceFile,
-    prompt: 'Chemin local du fichier .md :',
-    promptDefault: `doc/${slugify(page.title)}.md`,
+  const answers = await resolveInputs(INPUTS, {
+    localPath: {
+      flag: flags.localPath,
+      existing: kept?.sourceFile,
+      suggested: `doc/${slugify(page.title)}.md`,
+      validate: (value) => value.endsWith('.md') || 'Le chemin doit se terminer par .md',
+    },
+    title: {flag: flags.title, existing: kept?.title, suggested: page.title},
+    parentPageId: {
+      existing: kept?.parentPageId,
+      suggested: page.parentId ?? confluence.defaultParentPageId,
+      optional: true,
+    },
+    // code → le .md local fait foi ; confluence → la page Confluence fait foi.
+    maintainedIn: {flag: flags.maintainedIn, existing: kept?.maintainedIn, suggested: 'confluence'},
+    // Toujours résolu (vide → ignore) : le téléchargeur ne fait rien si le XML n'en référence aucune.
+    imagesDir: {flag: flags.imagesDir, existing: kept?.imagesDir, suggested: 'doc/img', optional: true},
   })
-  if (!localPath.endsWith('.md')) throw new Error('Le chemin doit se terminer par .md')
+  const maintainedIn: MaintainedIn = answers.maintainedIn.toLowerCase() === 'code' ? 'code' : 'confluence'
 
-  const title = await resolveValue(rl, {
-    flag: flags.title,
-    config: kept?.title,
-    prompt: 'Titre de la page Confluence :',
-    promptDefault: page.title,
-  })
-
-  const parentPageId = await resolveValue(rl, {
-    config: kept?.parentPageId,
-    prompt: 'parentPageId Confluence :',
-    promptDefault: page.parentId ?? confluence.defaultParentPageId ?? '',
-  })
-
-  // code → le .md local fait foi ; confluence → la page Confluence fait foi.
-  const maintainedInRaw = await resolveValue(rl, {
-    flag: flags.maintainedIn,
-    config: kept?.maintainedIn,
-    prompt: 'Maintenue côté code ou confluence ? (code/confluence) :',
-    promptDefault: 'confluence',
-  })
-  const maintainedIn: MaintainedIn = maintainedInRaw.trim().toLowerCase() === 'code' ? 'code' : 'confluence'
-
-  // Toujours résolu (vide → ignore) : le téléchargeur ne fait rien si le XML n'en référence aucune.
-  const imagesDirRaw = await resolveValue(rl, {
-    flag: flags.imagesDir,
-    config: kept?.imagesDir,
-    prompt: 'Dossier local pour les images (vide pour ignorer) :',
-    promptDefault: 'doc/img',
-  })
-  const imagesDir = imagesDirRaw.trim() || undefined
-
-  return {localPath, title, parentPageId, maintainedIn, imagesDir}
+  return {
+    localPath: answers.localPath,
+    title: answers.title,
+    parentPageId: answers.parentPageId ?? '',
+    maintainedIn,
+    imagesDir: answers.imagesDir || undefined,
+  }
 }
 
 /** Détermine l'environnement où se trouve la page (URL → env unique → sonde chaque env). */
 async function resolveEnvAndPage(
-  rl: Rl,
   config: AppConfig,
   registry: EnvRegistry,
   domain: string,
@@ -196,54 +175,40 @@ async function resolveEnvAndPage(
 
   // Même ID présent dans plusieurs instances → on tranche par un prompt.
   log.warning1(`Page présente dans plusieurs environnements : ${found.map((f) => f.env.key).join(', ')}.`)
-  const key = await askWithDefault(rl, 'Lequel ?', found[0].env.key)
-  return found.find((f) => f.env.key === key) ?? found[0]
+  const {pageEnv} = await resolveInputs(INPUTS, {
+    pageEnv: {choices: found.map((f) => f.env.key), suggested: found[0].env.key},
+  })
+  return found.find((f) => f.env.key === pageEnv) ?? found[0]
 }
 
 async function resolveInConfigDecision(
-  rl: Rl,
   adHoc: AdHocEnv | undefined,
   inConfigFlag: boolean | undefined,
-  question: string,
+  target: 'page' | 'replacement' | 'folder',
 ): Promise<boolean> {
-  if (!(await confirmPersistAdHocEnvOrSkip(rl, adHoc))) return false
-  return resolveConfirm(rl, {flag: inConfigFlag, question, default: true})
+  if (!(await confirmPersistAdHocEnvOrSkip(adHoc))) return false
+  const {inConfig} = await resolveInputs(inConfigInputs(target), {inConfig: {flag: inConfigFlag, suggested: true}})
+  return inConfig
 }
 
 /** Import d'un dossier Confluence complet : chaque descendant en .md local, une seule entrée `path: folder/*` en yaml. */
 async function pullFolder(
-  rl: Rl,
   client: ConfluenceClient,
   rootPage: ConfluencePage,
   rootType: 'folder' | 'page',
   flags: PullFlags,
   adHoc?: AdHocEnv,
 ): Promise<void> {
-  const rawFolder = await resolveValue(rl, {
-    flag: flags.localPath,
-    prompt: 'Dossier local de destination :',
-    promptDefault: `doc/${slugify(rootPage.title)}/`,
+  const answers = await resolveInputs(INPUTS, {
+    localFolder: {flag: flags.localPath, suggested: `doc/${slugify(rootPage.title)}/`},
+    folderParentPageId: {suggested: rootPage.parentId ?? client.configuration.defaultParentPageId, optional: true},
+    maintainedIn: {flag: flags.maintainedIn, suggested: 'confluence'},
+    imagesDir: {flag: flags.imagesDir, suggested: 'doc/img', optional: true},
   })
-  const localFolder = toPosixPath(rawFolder).replace(/\/?$/, '/')
-
-  const parentPageId = await resolveValue(rl, {
-    prompt: 'parentPageId Confluence (page parente du dossier) :',
-    promptDefault: rootPage.parentId ?? client.configuration.defaultParentPageId ?? '',
-  })
-
-  const maintainedInRaw = await resolveValue(rl, {
-    flag: flags.maintainedIn,
-    prompt: 'Maintenue côté code ou confluence ? (code/confluence) :',
-    promptDefault: 'confluence',
-  })
-  const maintainedIn: MaintainedIn = maintainedInRaw.trim().toLowerCase() === 'code' ? 'code' : 'confluence'
-
-  const imagesDirRaw = await resolveValue(rl, {
-    flag: flags.imagesDir,
-    prompt: 'Dossier local pour les images (vide pour ignorer) :',
-    promptDefault: 'doc/img',
-  })
-  const imagesDir = imagesDirRaw.trim() || undefined
+  const localFolder = toPosixPath(answers.localFolder).replace(/\/?$/, '/')
+  const parentPageId = answers.folderParentPageId ?? ''
+  const maintainedIn: MaintainedIn = answers.maintainedIn.toLowerCase() === 'code' ? 'code' : 'confluence'
+  const imagesDir = answers.imagesDir || undefined
 
   log.blank()
   log.step1('Récupération des sous-pages')
@@ -283,12 +248,7 @@ async function pullFolder(
   // Intégration dans codoc.yaml + codoc.lock : flag --in-config → prompt unique. Sur refus, les
   // fichiers locaux existent déjà sur disque mais rien n'est tracé (ni yaml ni lock) - usage
   // "utilitaire" volontairement hors suivi, sans comparaison future par ID.
-  const addToConfig = await resolveInConfigDecision(
-    rl,
-    adHoc,
-    flags.inConfig,
-    "Ajouter ce dossier à codoc.yaml (pour qu'il soit synchronisé par `codoc sync`) ?",
-  )
+  const addToConfig = await resolveInConfigDecision(adHoc, flags.inConfig, 'folder')
   if (addToConfig) {
     state.pages[codocId] = {
       ...makePageState({
@@ -331,7 +291,7 @@ async function pullFolder(
   })
 }
 
-export async function pull(flags: PullFlags = {}): Promise<void> {
+export async function pull(flags: PullFlags): Promise<void> {
   // 1. Config + state (chargés une seule fois)
   const config = getCodocConfigOrEmpty()
   const state = loadPublishState()
@@ -339,30 +299,22 @@ export async function pull(flags: PullFlags = {}): Promise<void> {
 
   let adHoc: AdHocEnv | undefined
   if (config.atlassian.environments.length === 0) {
-    const rawUrl = flags.page ?? (await input({message: '  URL de la page Confluence :'}))
-    if (!rawUrl) throw new Error('URL requise.')
-    flags = {...flags, page: rawUrl}
-    const {domain, spaceKey} = parsePageUrl(rawUrl)
+    const {domain, spaceKey} = parsePageUrl(flags.page)
     adHoc = await resolveAdHocEnv(domain, [], false, spaceKey)
   }
-
-  const rl = createRl()
 
   try {
     log.startProcess('Import Confluence → local')
 
-    // 2. URL Confluence : flag/arg → prompt
-    const rawInput = await resolveValue(rl, {flag: flags.page, prompt: 'URL de la page Confluence :'})
-    if (!rawInput) throw new Error('URL requise.')
-
-    const parsed = parsePageUrl(rawInput)
+    // 2. URL Confluence
+    const parsed = parsePageUrl(flags.page)
     const pageId = parsed.pageId
 
     // 3. Résolution env + récupération page (client testé une fois)
     log.blank()
     log.step1('Récupération de la page')
 
-    const {env, page} = await resolveEnvAndPage(rl, config, registry, parsed.domain, pageId, adHoc?.env)
+    const {env, page} = await resolveEnvAndPage(config, registry, parsed.domain, pageId, adHoc?.env)
     const client = await registry.connect(env)
 
     log.field('Environnement', `${env.key} (${env.baseUrl})`)
@@ -373,7 +325,7 @@ export async function pull(flags: PullFlags = {}): Promise<void> {
 
     // 4. Cas dossier - URL /folder/ direct (vrai dossier v2) ou proposition si sous-pages (page-dossier v1)
     if (parsed.isFolder) {
-      await pullFolder(rl, client, page, 'folder', flags, adHoc)
+      await pullFolder(client, page, 'folder', flags, adHoc)
       return
     }
     // `page` est ici confirmée comme une page v1 (fetchPageOrUndefined a réussi) - ses sous-pages se listent
@@ -386,14 +338,12 @@ export async function pull(flags: PullFlags = {}): Promise<void> {
     const childCount = subPages.length + subFolders.length
     if (childCount > 0) {
       log.blank()
-      log.info1(`Cette page contient ${childCount} sous-élément(s) (${subPages.length} page(s), ${subFolders.length} dossier(s)).`)
-      const asFolder = await resolveConfirm(rl, {
-        flag: flags.asFolder,
-        question: 'Importer tout le dossier (toutes les sous-pages/sous-dossiers) ?',
-        default: true,
-      })
+      log.info1(
+        `Cette page contient ${childCount} sous-élément(s) (${subPages.length} page(s), ${subFolders.length} dossier(s)).`,
+      )
+      const {asFolder} = await resolveInputs(INPUTS, {asFolder: {flag: flags.asFolder, suggested: true}})
       if (asFolder) {
-        await pullFolder(rl, client, page, 'page', flags, adHoc)
+        await pullFolder(client, page, 'page', flags, adHoc)
         return
       }
     }
@@ -403,17 +353,18 @@ export async function pull(flags: PullFlags = {}): Promise<void> {
     let replaceExisting = false
     if (existing) {
       const matchLabel =
-        existing.matchedBy === 'id' ? 'même ID Confluence' : existing.matchedBy === 'titre' ? 'même titre' : 'déjà dans codoc.yaml'
+        existing.matchedBy === 'id'
+          ? 'même ID Confluence'
+          : existing.matchedBy === 'titre'
+            ? 'même titre'
+            : 'déjà dans codoc.yaml'
       log.blank()
       log.warning1(`Cette page semble déjà importée (${matchLabel}) :`)
       log.info4(`Fichier : ${existing.sourceFile}`)
       log.info4(`Titre   : ${existing.title}`)
       log.info4(`Page ID : ${existing.pageId}`)
-      replaceExisting = await resolveConfirm(rl, {
-        flag: flags.keepExisting,
-        question: 'Garder la config existante (les valeurs ci-dessous serviront de défaut) ?',
-        default: true,
-      })
+      replaceExisting = (await resolveInputs(INPUTS, {keepExisting: {flag: flags.keepExisting, suggested: true}}))
+        .keepExisting
       if (!replaceExisting) {
         log.warning1("L'existant est conservé ; un nouvel import séparé est créé.")
       }
@@ -421,7 +372,6 @@ export async function pull(flags: PullFlags = {}): Promise<void> {
 
     // 6. Saisies finales (chemin local, titre, maintenance, imagesDir)
     const {localPath, title, parentPageId, maintainedIn, imagesDir} = await collectImportAnswers(
-      rl,
       page,
       env,
       existing,
@@ -444,10 +394,7 @@ export async function pull(flags: PullFlags = {}): Promise<void> {
     const codocId = (replaceExisting && existing?.codocId) || generateRandomCodocId()
     const isReplacement = replaceExisting && Boolean(existing)
 
-    const question = isReplacement
-      ? 'Mettre à jour la config codoc.yaml existante pour cette doc ?'
-      : "Ajouter cette doc à codoc.yaml (pour qu'elle soit synchronisée par `codoc sync`) ?"
-    const addToConfig = await resolveInConfigDecision(rl, adHoc, flags.inConfig, question)
+    const addToConfig = await resolveInConfigDecision(adHoc, flags.inConfig, isReplacement ? 'replacement' : 'page')
 
     if (addToConfig) {
       const entry = buildYamlEntry({localPath, title, parentPageId, imagesDir, maintainedIn, env: env.key, codocId})
@@ -499,7 +446,6 @@ export async function pull(flags: PullFlags = {}): Promise<void> {
       'Prochaines étapes': nextSteps,
     })
   } finally {
-    rl.close()
     await closeDrawioRenderer()
   }
 }

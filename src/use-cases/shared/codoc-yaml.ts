@@ -12,6 +12,8 @@ export function buildYamlEntry(params: {
   localPath: string
   /** Titre de la page (omis pour un dossier/glob, où chaque page est titrée individuellement). */
   title?: string
+  /** Préfixe ajouté devant le titre (celui-ci ou, pour un dossier/glob, celui de chaque page générée). */
+  titlePrefix?: string
   parentPageId?: string
   imagesDir?: string
   maintainedIn: MaintainedIn
@@ -37,9 +39,10 @@ export function buildYamlEntry(params: {
     lines.push(`    imagesDir: ${params.imagesDir}`)
   }
 
-  if (params.title || params.parentPageId) {
+  if (params.title || params.titlePrefix || params.parentPageId) {
     lines.push(`    confluence:`)
     if (params.title) lines.push(`      title: "${params.title.replace(/"/g, '\\"')}"`)
+    if (params.titlePrefix) lines.push(`      titlePrefix: "${params.titlePrefix.replace(/"/g, '\\"')}"`)
     if (params.parentPageId) lines.push(`      parentPageId: "${params.parentPageId}"`)
   }
 

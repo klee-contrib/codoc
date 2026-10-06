@@ -24,10 +24,6 @@ export interface RawJira {
 export interface RawDrawio {
   macroName?: string;
   width?: number;
-  edgeStyle?: "curved" | "orthogonal" | "straight";
-  edgeAnchor?: "auto" | "side";
-  colWidth?: number;
-  rowStep?: number;
 }
 
 export interface RawGitLab {

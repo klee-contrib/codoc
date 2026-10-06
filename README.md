@@ -24,7 +24,7 @@ Pour désactiver complètement cette vérification, ajoute `autoUpdate: false` d
 
 ## Commandes
 
-Chaque commande se lance depuis la racine du projet ciblé. Résolution des informations dans l'ordre **flag CLI** → **valeur déjà présente dans `codoc.yaml`** → **prompt console** (pas de détection automatique de mode CI - voir [Usage en CI](#usage-en-ci)).
+Chaque commande se lance depuis la racine du projet ciblé. Résolution des informations dans l'ordre **flag CLI** → **variable d'environnement ou valeur déjà présente dans `codoc.yaml`** → **prompt console**, ce dernier uniquement dans un terminal interactif (voir [Usage en CI](#usage-en-ci)).
 
 ### `codoc init`
 
@@ -43,9 +43,9 @@ Génère le contexte agent IA (basé sur `codoc.yaml`, qui doit déjà exister e
 
 | Flag | Rôle |
 |---|---|
-| `--target <clé>` | Cible(s) à générer, répétable (`--target a --target b`) et/ou séparées par des virgules (`--target a,b`). Défaut : les cibles déjà en place (silencieux), sinon demandé |
+| `--target <clé>` | Cible(s) à générer, répétable (`--target a --target b`) et/ou séparées par des virgules (`--target a,b`). Sans ce flag : sélection interactive |
 
-Résolution propre à cette commande (différente du flag → `codoc.yaml` → prompt des autres commandes, cf. [Usage en CI](#usage-en-ci)) : `--target` → cibles déjà présentes sur le disque (aucune invite) → sélection interactive (uniquement si `--target` est absent et qu'aucune cible n'existe encore).
+Contrairement aux autres commandes (flag → `codoc.yaml` → prompt, cf. [Usage en CI](#usage-en-ci)), `agent-context` n'a pas de valeur de repli dans `codoc.yaml` : c'est `--target`, ou l'invite interactive - jamais une détection de ce qui existe déjà sur le disque. La génération écrase toujours le fichier existant de la cible choisie. En CI, `--target` est donc requis (sans lui, la commande échoue en le signalant).
 
 ### `codoc sync`
 
@@ -80,6 +80,7 @@ Publie un `.md` local vers Confluence (interactif). L'environnement est déduit 
 | `--keep-existing` / `--no-keep-existing` | Si une entrée `codoc.yaml` existe déjà pour ce chemin : la met à jour en place (valeurs existantes comme défauts), ou en crée une séparée. Non fourni : demande le cas échéant |
 | `--parent-page <url>` | URL de la page Confluence parente cible (`""` pour aucun parent). Défaut : celle de la config existante, sinon prompt |
 | `--title <titre>` | Titre de la page Confluence (fichier unique). Défaut : config existante, sinon le H1 du fichier |
+| `--prefix <préfixe>` | Préfixe ajouté devant le titre (fichier unique) ou devant celui de chaque page générée (dossier). Défaut : config existante, sinon aucun (prompt, vide accepté) |
 | `--maintained-in <code\|confluence>` | Source de vérité enregistrée pour les prochains `sync` : `code` ou `confluence`. Défaut : `code`. N'affecte pas cette publication (toujours un envoi local → Confluence) |
 
 ### `codoc tree`
@@ -110,7 +111,29 @@ aucun sens).
 
 ### Usage en CI
 
-`publish`, `pull` et `sync` résolvent chaque information nécessaire dans cet ordre : **flag CLI** (`--xxx`, cf. tableaux ci-dessus) → **valeur déjà présente dans `codoc.yaml`** → **prompt console**. Il n'y a pas de détection automatique de mode CI : une commande ne demande jamais rien tant que tout ce dont elle a besoin est fourni en flag ou déjà configuré ; si une information manque, elle est demandée comme en local (à la charge du pipeline de fournir ce qu'il faut pour rester non-interactif).
+Chaque commande rassemble au démarrage ce dont elle a besoin (identifiants et `codoc.yaml` de chaque environnement, argument), le reste étant résolu au moment où il dépend des données (config existante, sous-pages, environnement ambigu, confirmations de `sync`). Chaque information est résolue dans cet ordre : **flag CLI** (`--xxx`, cf. tableaux ci-dessus) → **variable d'environnement** ou **valeur déjà présente dans `codoc.yaml`** → **prompt console**.
+
+Le prompt n'a lieu que dans un terminal interactif. Hors TTY (CI), une question qui a une valeur par défaut prend cette valeur (ex. `sync` sans `--confirm` refuse suppressions et adoptions, `publish`/`pull` sans `--in-config` ajoutent la doc à `codoc.yaml`) ; sinon la commande échoue d'emblée en listant toutes les valeurs manquantes et où les renseigner.
+
+## Graphiques vivants (eazyBI, Jira)
+
+Un bloc de code JSON typé devient, à la publication, la macro Confluence correspondante : le graphique est affiché **en direct** sur la page, pas figé en image.
+
+| Bloc | Macro publiée | Champs requis | Champs optionnels (défaut) |
+|---|---|---|---|
+| ` ```eazybi-report ` | `jira-report-gadget` (rapport eazyBI) | `accountId`, `reportId` | `selectedPages` (`[]`), `height` (`450`), `showHeader`, `showBorder` (`true`), `enableExport`, `collapsed`, `disableActions` (`false`) |
+| ` ```jira-chart ` | `jirachart` (graphique Jira) | `jql`, `serverId` (lien d'application Confluence → Jira du site) | `chartType` (`createdvsresolved`), `periodName` (`monthly`), `daysprevious` (`180`), `isCumulative`, `showUnresolvedTrend` (`true`), `versionLabel` (`all`), `server` (`System Jira`) |
+
+Pour garder un aperçu lisible **hors Confluence** (dépôt Git, éditeur), placer une image locale juste avant le bloc, précédée de son marqueur : `<!-- eazybi-preview -->` ou `<!-- jira-chart-preview -->`. Cette image est retirée à la publication (jamais le graphique et l'image à la fois) ; une image sans marqueur n'est jamais touchée. Un bloc au JSON invalide ou sans ses champs requis est laissé tel quel.
+
+````md
+<!-- jira-chart-preview -->
+![STA DEP](img/sta-dep.png)
+
+```jira-chart
+{"jql": "type = Bug AND project = DEP", "serverId": "ec6d1637-f9d6-3ae4-9d5e-9dce283383ea"}
+```
+````
 
 ## Configuration - `codoc.yaml`
 
@@ -134,6 +157,8 @@ Ne pas committer (ajouté à `.gitignore` par `init`).
 | `CONFLUENCE_<CLÉ>_API_TOKEN` | Token Atlassian pour l'environnement `<clé>` |
 
 Toujours préfixées par la clé de l'environnement (`atlassian.environments.<clé>` dans `codoc.yaml`) - même s'il n'y en a qu'un seul, ex. `CONFLUENCE_DEFAULT_USERNAME`. Pas de variable générique partagée entre environnements.
+
+Une variable absente est demandée en console (terminal interactif uniquement), puis proposée à la sauvegarde dans `.env-codoc`. Un `baseUrl` ou `spaceKey` absent de `codoc.yaml` est aussi demandé, mais jamais écrit : codoc affiche le bloc à y ajouter.
 
 ## `codoc.lock`
 

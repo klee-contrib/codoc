@@ -46,10 +46,6 @@ export interface GitLabConfig {
 export interface DrawioConfig {
   macroName: string
   width?: number
-  edgeStyle?: 'curved' | 'orthogonal' | 'straight'
-  edgeAnchor?: 'auto' | 'side'
-  colWidth?: number
-  rowStep?: number
 }
 
 export interface AppConfig {

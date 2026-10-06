@@ -1,8 +1,8 @@
 import {Args, Command, Flags} from '@oclif/core'
 
-import {confluenceEnvRequirements} from '../config/codoc-config-atlassian.js'
 import {loadRawConfig} from '../config/codoc-config-raw.js'
-import {ensureEnvVars} from '../services/ensure-env.js'
+import {confluenceAccessInputs, INPUTS} from '../config/codoc-inputs.js'
+import {requestAll, resolveInputs} from '../services/resolve-inputs.js'
 import {pull} from '../use-cases/pull/pull.js'
 
 export default class Pull extends Command {
@@ -21,7 +21,7 @@ export default class Pull extends Command {
     'as-folder': Flags.boolean({
       allowNo: true,
       description:
-        "Si la page a des sous-pages/sous-dossiers, importe tout le dossier (--as-folder) ou seulement " +
+        'Si la page a des sous-pages/sous-dossiers, importe tout le dossier (--as-folder) ou seulement ' +
         'la page (--no-as-folder). Sans sous-élément, ignoré. Non fourni : demande le cas échéant.',
     }),
     'keep-existing': Flags.boolean({
@@ -41,7 +41,8 @@ export default class Pull extends Command {
       description: 'Chemin local du fichier .md (page unique) ou du dossier de destination (import dossier).',
     }),
     title: Flags.string({
-      description: 'Titre de la page Confluence (page unique). Par défaut : celui de la config existante, sinon le titre Confluence.',
+      description:
+        'Titre de la page Confluence (page unique). Par défaut : celui de la config existante, sinon le titre Confluence.',
     }),
     'maintained-in': Flags.string({
       options: ['code', 'confluence'],
@@ -55,10 +56,11 @@ export default class Pull extends Command {
   async run() {
     const {args, flags} = await this.parse(Pull)
 
-    await ensureEnvVars(confluenceEnvRequirements(loadRawConfig().atlassian?.environments))
+    const access = confluenceAccessInputs(loadRawConfig().atlassian?.environments)
+    const {pageUrl} = await resolveInputs({...access, ...INPUTS}, {...requestAll(access), pageUrl: {flag: args.page}})
 
     await pull({
-      page: args.page,
+      page: pageUrl,
       asFolder: flags['as-folder'],
       keepExisting: flags['keep-existing'],
       inConfig: flags['in-config'],

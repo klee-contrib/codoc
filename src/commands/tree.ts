@@ -1,8 +1,8 @@
 import {Command, Flags} from '@oclif/core'
 
-import {confluenceEnvRequirements} from '../config/codoc-config-atlassian.js'
 import {loadRawConfig} from '../config/codoc-config-raw.js'
-import {ensureEnvVars} from '../services/ensure-env.js'
+import {confluenceAccessInputs} from '../config/codoc-inputs.js'
+import {requestAll, resolveInputs} from '../services/resolve-inputs.js'
 import {printDocsTree} from '../use-cases/tree/docs-tree.js'
 
 export default class Tree extends Command {
@@ -17,7 +17,8 @@ export default class Tree extends Command {
   async run() {
     const {flags} = await this.parse(Tree)
 
-    await ensureEnvVars(confluenceEnvRequirements(loadRawConfig().atlassian?.environments))
+    const access = confluenceAccessInputs(loadRawConfig().atlassian?.environments)
+    await resolveInputs(access, requestAll(access))
 
     await printDocsTree({env: flags.env})
   }

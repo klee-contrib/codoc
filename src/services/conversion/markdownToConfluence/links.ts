@@ -2,14 +2,19 @@ import { escapeXml, escapeAttr } from "../shared/xml-escaping.js";
 import { structuredMacro } from "../shared/confluence-macro-builder.js";
 import { JIRA_KEY_RE } from "../shared/jira.js";
 import { toGitlabFileUrl } from "../shared/gitlab-url.js";
+import { resolveConfluencePageLink } from "../shared/confluence-page-link.js";
 import { conversionOptions } from "./conversion-state.js";
 
-// Résout un href de lien Markdown (URLs GitLab), dérive aussi #Lxx depuis un title `"L42"`.
+// Résout un href de lien Markdown : un .md local publié gagne (page Confluence cible), sinon URL
+// GitLab - dérive aussi #Lxx depuis un title `"L42"` (uniquement pertinent pour le repli GitLab).
 function resolveHref(href: string, title?: string | null): string {
   if (/^https?:\/\/|^mailto:|^#/.test(href)) return href;
 
   const sourceFile = conversionOptions().sourceFile;
   if (!sourceFile) return href;
+
+  const mdUrl = resolveConfluencePageLink(href, sourceFile, conversionOptions().resolveMdLink);
+  if (mdUrl) return mdUrl;
 
   // Ajoute le fragment #Lxx dérivé du title si l'href n'en a pas déjà un.
   let withFragment = href;

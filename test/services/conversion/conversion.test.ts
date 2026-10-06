@@ -5,6 +5,7 @@ import {
   preprocessStorage,
 } from '../../../src/services/conversion/confluenceToMarkdown/index.js'
 import {convertMarkdownToConfluence} from '../../../src/services/conversion/markdownToConfluence/index.js'
+import {findLockedRef, PublishState} from '../../../src/services/lock/lock-file.js'
 import {MD_CASES, XML_CASES} from './corpus.js'
 
 snapshot.setDefaultSnapshotSerializers([
@@ -16,6 +17,25 @@ const GITLAB_CFG = {baseUrl: 'https://gitlab.example.com/group/project', branch:
 const SOURCE_FILE = 'doc/golden.md'
 const RT_BASE = 'https://example.atlassian.net/wiki'
 
+// Fixture pour "link-relative-md" (corpus.ts) : ../docs/autre.md, résolu depuis doc/golden.md,
+// normalise en docs/autre.md - même convention que PageState.sourceFile.
+const FIXTURE_ENV_KEY = 'default'
+const FIXTURE_LOCK: PublishState = {
+  lastPublished: '2026-01-01T00:00:00.000Z',
+  pages: {
+    'fixture-autre-doc': {
+      confluencePageId: '999999',
+      environment: FIXTURE_ENV_KEY,
+      title: 'Autre doc',
+      confluenceUrl: 'https://example.atlassian.net/wiki/spaces/DOC/pages/999999/Autre+doc',
+      sourceFile: 'docs/autre.md',
+      publishedAt: '2026-01-01T00:00:00.000Z',
+      maintainedIn: 'code',
+    },
+  },
+}
+const resolveMdLink = (sourceFile: string) => findLockedRef(FIXTURE_LOCK, FIXTURE_ENV_KEY, sourceFile)?.confluenceUrl
+
 describe('conversion golden-master', () => {
   before(() => {
     process.env.GITLAB_BASE_URL = 'https://gitlab.example.com/group/project'
@@ -24,13 +44,20 @@ describe('conversion golden-master', () => {
   describe('markdown → confluence', () => {
     for (const c of MD_CASES) {
       it(`${c.name} (sourceFile)`, (t) => {
-        t.assert.snapshot(convertMarkdownToConfluence(c.markdown, {sourceFile: SOURCE_FILE, gitlab: GITLAB_CFG}))
+        t.assert.snapshot(
+          convertMarkdownToConfluence(c.markdown, {sourceFile: SOURCE_FILE, gitlab: GITLAB_CFG, resolveMdLink}),
+        )
       })
 
       if (c.jira) {
         it(`${c.name} (sourceFile + jira)`, (t) => {
           t.assert.snapshot(
-            convertMarkdownToConfluence(c.markdown, {sourceFile: SOURCE_FILE, jira: JIRA_CFG, gitlab: GITLAB_CFG}),
+            convertMarkdownToConfluence(c.markdown, {
+              sourceFile: SOURCE_FILE,
+              jira: JIRA_CFG,
+              gitlab: GITLAB_CFG,
+              resolveMdLink,
+            }),
           )
         })
       }

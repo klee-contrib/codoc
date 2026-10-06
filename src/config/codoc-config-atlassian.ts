@@ -1,43 +1,9 @@
-import {EnvRequirement} from '../services/ensure-env.js'
 import {AppConfig, ConfluenceConfig, DocEntryConfig, DrawioConfig, JiraLinkConfig} from '../types/codoc-types.js'
 import {RawAtlassianEnv, RawCodocConfig, RawDrawio, RawJira} from './codoc-config-raw.js'
-
-const ATLASSIAN_TOKEN_URL = 'https://id.atlassian.com/manage-profile/security/api-tokens'
-const KADOC_REQUEST_URL = 'https://kleegroup.atlassian.net/servicedesk/customer/portal/27/group/230'
-
-export function apiTokenGenerateUrl(): string {
-  return (
-    'Pour les membres de KleeGroup : ' +
-    KADOC_REQUEST_URL +
-    " -> Demande d'utilisation clé API -> " +
-    ATLASSIAN_TOKEN_URL +
-    " -> Créer un jeton d'API"
-  )
-}
 
 export function confluenceEnvVarNames(key: string): {tokenVar: string; userVar: string} {
   const suffix = key.toUpperCase().replace(/[^A-Z0-9]/g, '_')
   return {userVar: `CONFLUENCE_${suffix}_USERNAME`, tokenVar: `CONFLUENCE_${suffix}_API_TOKEN`}
-}
-
-export function confluenceEnvRequirements(envs: Record<string, RawAtlassianEnv> | undefined): EnvRequirement[] {
-  const keys = Object.keys(envs ?? {})
-
-  return keys.flatMap((key) => {
-    const {userVar, tokenVar} = confluenceEnvVarNames(key)
-    return [
-      {
-        name: userVar,
-        secret: false,
-        hint: `Identifiant Atlassian (email) pour l'environnement Confluence "${key}".`,
-      },
-      {
-        name: tokenVar,
-        hint: `Token API Atlassian pour l'environnement Confluence "${key}".`,
-        generateUrl: apiTokenGenerateUrl(),
-      },
-    ]
-  })
 }
 
 /** Retourne l'environnement s'il n'y en a qu'un seul, sinon `undefined`. */
@@ -54,10 +20,6 @@ function parseDrawio(raw: RawDrawio | undefined): DrawioConfig {
   return {
     macroName: raw?.macroName ?? 'drawio',
     width: raw?.width,
-    edgeStyle: raw?.edgeStyle,
-    edgeAnchor: raw?.edgeAnchor,
-    colWidth: raw?.colWidth,
-    rowStep: raw?.rowStep,
   }
 }
 

@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import {describe, it} from 'node:test'
 
+import {InputRequest, InputsContext} from '../../../src/services/resolve-inputs.js'
 import {
   BLOCK_END,
   BLOCK_START,
@@ -12,75 +13,71 @@ import {
   writeBlock,
   writeDedicated,
 } from '../../../src/use-cases/agent-context/agent-context.js'
-import {
-  AGENT_CONTEXT_TARGETS,
-  AgentContextTarget,
-  AgentContextTargetKey,
-} from '../../../src/use-cases/agent-context/targets.js'
+import {AGENT_CONTEXT_TARGETS} from '../../../src/use-cases/agent-context/targets.js'
 
 function tmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'codoc-agent-context-'))
 }
 
-function throwingPrompt(): Promise<AgentContextTargetKey[]> {
-  throw new Error('le prompt ne devrait jamais être appelé ici')
+function fakeContext(options: {interactive?: boolean; answer?: string[]} = {}) {
+  const asked: InputRequest[] = []
+  const context: InputsContext = {
+    interactive: options.interactive ?? false,
+    env: {},
+    config: {},
+    async ask(_spec, request) {
+      asked.push(request)
+      return options.answer
+    },
+    async remember() {},
+  }
+  return {context, asked}
 }
 
 describe('resolveAgentContextTargets', () => {
   describe('avec --target', () => {
-    it('renvoie les clés du flag sans toucher au disque ni au prompt', async () => {
-      const keys = await resolveAgentContextTargets(['claude', 'kiro'], tmpDir(), throwingPrompt)
+    it('renvoie les clés du flag sans rien demander', async () => {
+      const {context, asked} = fakeContext({interactive: true})
+      const keys = await resolveAgentContextTargets(['claude', 'kiro'], context)
       assert.deepStrictEqual(keys, ['claude', 'kiro'])
+      assert.deepStrictEqual(asked, [])
     })
 
     it('déduplique les clés répétées', async () => {
-      const keys = await resolveAgentContextTargets(['claude', 'claude', 'kiro'], tmpDir(), throwingPrompt)
+      const keys = await resolveAgentContextTargets(['claude', 'claude', 'kiro'], fakeContext().context)
       assert.deepStrictEqual(keys, ['claude', 'kiro'])
     })
 
     it('rejette une clé inconnue avec un message listant la clé et les valeurs possibles', async () => {
       await assert.rejects(
-        () => resolveAgentContextTargets(['claude', 'bogus'], tmpDir(), throwingPrompt),
+        () => resolveAgentContextTargets(['claude', 'bogus'], fakeContext().context),
         /"bogus".*Valeurs possibles.*copilot, agent, claude, kiro/,
       )
     })
   })
 
-  describe('sans --target, cibles déjà présentes sur le disque', () => {
-    it('les sélectionne silencieusement, sans jamais appeler le prompt', async () => {
+  describe('sans --target', () => {
+    it('demande en terminal parmi les 4 cibles, même si certaines existent déjà sur le disque', async () => {
       const dir = tmpDir()
       fs.writeFileSync(path.join(dir, 'CLAUDE.md'), 'contenu existant', 'utf8')
       fs.mkdirSync(path.join(dir, '.kiro', 'steering'), {recursive: true})
       fs.writeFileSync(path.join(dir, '.kiro', 'steering', 'codoc.md'), 'contenu existant', 'utf8')
+      const {context, asked} = fakeContext({interactive: true, answer: ['agent']})
 
-      const keys = await resolveAgentContextTargets(undefined, dir, throwingPrompt)
-      assert.deepStrictEqual(keys, ['claude', 'kiro'])
-    })
-  })
-
-  describe("sans --target, aucune cible n'existe encore", () => {
-    it('tombe sur le prompt interactif, avec les 4 cibles proposées', async () => {
-      const dir = tmpDir()
-      let received: AgentContextTarget[] | undefined
-      const fakePrompt = async (targets: AgentContextTarget[]): Promise<AgentContextTargetKey[]> => {
-        received = targets
-        return ['agent']
-      }
-
-      const keys = await resolveAgentContextTargets(undefined, dir, fakePrompt)
+      const keys = await resolveAgentContextTargets(undefined, context)
 
       assert.deepStrictEqual(keys, ['agent'])
-      assert.strictEqual(received, AGENT_CONTEXT_TARGETS)
+      assert.deepStrictEqual(
+        asked[0].choices?.map((choice) => (typeof choice === 'string' ? choice : choice.value)),
+        AGENT_CONTEXT_TARGETS.map((t) => t.key),
+      )
     })
 
-    it('renvoie un tableau vide si le prompt échoue (Ctrl+C, stdin non interactif)', async () => {
-      const dir = tmpDir()
-      const failingPrompt = async (): Promise<AgentContextTargetKey[]> => {
-        throw new Error('ExitPromptError')
-      }
-
-      const keys = await resolveAgentContextTargets(undefined, dir, failingPrompt)
-      assert.deepStrictEqual(keys, [])
+    it('hors terminal, échoue en indiquant --target au lieu de rester bloqué sur une question', async () => {
+      await assert.rejects(
+        () => resolveAgentContextTargets(undefined, fakeContext().context),
+        /Valeurs manquantes[\s\S]*--target <clé>/,
+      )
     })
   })
 })

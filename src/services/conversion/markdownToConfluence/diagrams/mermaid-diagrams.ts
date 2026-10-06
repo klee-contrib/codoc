@@ -3,6 +3,7 @@ import {log} from '../../../log/logger.js'
 import {preserveAsSentinel} from '../../shared/preserved-macros.js'
 import {structuredMacro} from '../../shared/confluence-macro-builder.js'
 import {toGitlabFileUrl} from '../../shared/gitlab-url.js'
+import {MdLinkResolver, resolveConfluencePageLink} from '../../shared/confluence-page-link.js'
 import {escapeXml} from '../../shared/xml-escaping.js'
 import {mermaidToDrawio} from './mermaid-to-drawio.js'
 
@@ -29,36 +30,31 @@ export function manageMermaidsInMarkdownFile(
   cfg: DrawioConfig,
   sourceFile: string,
   gitlab?: {baseUrl?: string; branch?: string},
+  resolveMdLink?: MdLinkResolver,
 ): {markdown: string; attachments: DrawioAttachment[]} {
-  const matches = [...markdown.matchAll(/```mermaid\r?\n([\s\S]*?)```/g)]
-  if (!matches.length) return {markdown, attachments: []}
+  const re = /```mermaid\r?\n([\s\S]*?)```/g
+  const total = [...markdown.matchAll(re)].length
+  if (!total) return {markdown, attachments: []}
 
   const attachments: DrawioAttachment[] = []
-  const parts: string[] = []
-  let last = 0
+  let i = 0
 
-  for (let i = 0; i < matches.length; i++) {
-    const m = matches[i]
-    const diagramName = matches.length === 1 ? diagramBaseName : `${diagramBaseName}-${i + 1}`
+  const result = markdown.replace(re, (_full, mermaidBlock: string) => {
+    const diagramName = total === 1 ? diagramBaseName : `${diagramBaseName}-${++i}`
     const filename = `${diagramName}.drawio`
-    // Liens relatifs des nœuds réécrits en URLs GitLab (draw.io publié ne peut pas les résoudre).
-    const mermaidSrc = m[1].replace(
+    // Liens relatifs des nœuds réécrits en URL de la page Confluence cible (.md local publié) ou,
+    // à défaut, en URL GitLab (draw.io publié ne peut résoudre ni l'un ni l'autre lui-même).
+    const mermaidSrc = mermaidBlock.replace(
       /<a href='([^']*)'>/g,
-      (_full, href: string) => `<a href='${toGitlabFileUrl(href, sourceFile, gitlab)}'>`,
+      (_a, href: string) =>
+        `<a href='${resolveConfluencePageLink(href, sourceFile, resolveMdLink) ?? toGitlabFileUrl(href, sourceFile, gitlab)}'>`,
     )
-    const {xml: content, warnings} = mermaidToDrawio(mermaidSrc, diagramName, {
-      edgeStyle: cfg.edgeStyle,
-      edgeAnchor: cfg.edgeAnchor,
-      colWidth: cfg.colWidth,
-      rowStep: cfg.rowStep,
-    })
+    const {xml: content, warnings} = mermaidToDrawio(mermaidSrc, diagramName)
     for (const w of warnings) log.warning2(`${sourceFile} (${diagramName}) : ${w}`)
     attachments.push({filename, content})
 
-    const sentinel = preserveAsSentinel(buildDrawioMacro(filename, cfg))
-    parts.push(markdown.slice(last, m.index), `\n\n${sentinel}\n\n`)
-    last = m.index! + m[0].length
-  }
-  parts.push(markdown.slice(last))
-  return {markdown: parts.join(''), attachments}
+    return `\n\n${preserveAsSentinel(buildDrawioMacro(filename, cfg))}\n\n`
+  })
+
+  return {markdown: result, attachments}
 }

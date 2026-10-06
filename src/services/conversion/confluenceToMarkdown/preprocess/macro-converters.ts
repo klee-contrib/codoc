@@ -47,8 +47,13 @@ export function preserveDrawioMacros(html: string): string {
 // Ex. `<ac:structured-macro ac:name="jira"><ac:parameter ac:name="key">DEP-123</ac:parameter></ac:structured-macro>` → `<a href=".../browse/DEP-123">DEP-123</a>`
 export function convertJiraElements(html: string, jiraBase: string): string {
   html = html.replace(
-    /<a\s[^>]*?href="([^"]+)"[^>]*?data-card-appearance="block"[^>]*?>[\s\S]*?<\/a>|<a\s[^>]*?data-card-appearance="block"[^>]*?href="([^"]+)"[^>]*?>[\s\S]*?<\/a>/g,
-    (_, url1: string, url2: string) => `<a href="${url1 || url2}">Tableau Jira</a>`,
+    /<a([^>]*)data-card-appearance="block"([^>]*)>[\s\S]*?<\/a>/g,
+    (full, before: string, after: string) => {
+      // Pas de href (carte cassée/non résolue) : laissé tel quel, comme l'ancien double-alternative
+      // (qui exigeait href) - seul l'ordre href/data-card-appearance devient indifférent ici.
+      const url = (before + after).match(/href="([^"]+)"/)?.[1];
+      return url ? `<a href="${url}">Tableau Jira</a>` : full;
+    },
   );
 
   html = html.replace(

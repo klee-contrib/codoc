@@ -5,6 +5,43 @@ Toutes les modifications notables de ce projet sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et ce projet suit le
 [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [Non publié]
+
+### Ajouté
+
+- Graphiques vivants : les blocs ` ```eazybi-report ` et ` ```jira-chart ` (JSON) sont publiés en
+  macros Confluence `jira-report-gadget` (rapport eazyBI) et `jirachart` (graphique Jira, ex.
+  "Créés vs résolus"), affichées en direct plutôt qu'en image. Une image locale précédée de
+  `<!-- eazybi-preview -->` / `<!-- jira-chart-preview -->` sert d'aperçu hors Confluence et est
+  retirée à la publication.
+
+- `codoc publish --prefix <préfixe>` : préfixe le titre de la page publiée (ou celui de chaque page,
+  pour un dossier), sans passer par `codoc.yaml`. Résolu comme `--title` (flag → config existante,
+  sinon prompt, vide accepté) et persisté dans `codoc.yaml` (`confluence.titlePrefix`) au même titre
+  que `--title`/`--parent-page` si l'entrée est ajoutée à la config.
+
+### Corrigé
+
+- Diagrammes Mermaid `classDiagram` (jusqu'ici uniquement `graph`/`flowchart`) : chaque classe
+  (`class Nom{ … }`, avec stéréotype `<<Enum>>`/`&lt;&lt;Enum&gt;&gt;` et champs), les associations
+  avec cardinalités (`A "0..1" --> "0..*" B`), l'héritage (`A <|-- B`) et les références sans corps
+  vers une classe définie ailleurs (`class Nom:::style`) sont maintenant reconnus au lieu de
+  disparaître silencieusement ou de déclencher un avertissement "syntaxe d'arête non reconnue" sur
+  chaque relation - cas réel : `depositaires/model/doc/*-mdd.md`.
+
+### Modifié
+
+- `codoc agent-context` sans `--target` : demande désormais toujours interactivement quelle(s)
+  cible(s) générer, plutôt que de régénérer silencieusement les cibles déjà présentes sur le disque.
+  Génère toujours en écrasant le fichier existant de la cible choisie, comme avant.
+- Diagrammes draw.io générés depuis un bloc ` ```mermaid ` (mode sans subgraph) : mise en page
+  automatique via [dagre](https://github.com/dagrejs/dagre) - le même moteur de layout par rangs que
+  Mermaid utilise lui-même en interne - à la place de l'ancien placement fait main (BFS + tri
+  barycentrique, cases de taille fixe quel que soit le texte). Chaque boîte est maintenant
+  dimensionnée selon son contenu. En conséquence, `drawio.edgeStyle`/`edgeAnchor`/`colWidth`/`rowStep`
+  n'existent plus dans `codoc.yaml` (plus rien à régler pour un rendu correct) - seuls `macroName` et
+  `width` restent configurables.
+
 ## [0.2.1] - 2026-09-14
 
 ### Ajouté

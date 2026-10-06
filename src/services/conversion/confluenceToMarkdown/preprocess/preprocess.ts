@@ -154,8 +154,7 @@ function stripFinalArtifacts(html: string): string {
     "",
   );
   html = html.replace(/<hr[^>]+>/g, "<hr/>");
-  html = html.replace(/<\/?ac:[a-z-]+(?:\s[^>]*)?\/?>/g, "");
-  return html.replace(/<\/?ri:[a-z-]+(?:\s[^>]*)?\/?>/g, "");
+  return html.replace(/<\/?(?:ac|ri):[a-z-]+(?:\s[^>]*)?\/?>/g, "");
 }
 
 export function preprocessStorage(xml: string, imgRelPath?: string, baseUrl?: string): string {

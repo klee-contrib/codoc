@@ -5,6 +5,8 @@ import {structuredMacro} from '../shared/confluence-macro-builder.js'
 import {escapeXml} from '../shared/xml-escaping.js'
 import {renderTokens} from './render/blocks.js'
 import {ConversionOptions, beginConversion, endConversion} from './conversion-state.js'
+import {manageEazybiReportsInMarkdown} from './diagrams/eazybi-report.js'
+import {manageJiraChartsInMarkdown} from './diagrams/jira-chart.js'
 import {DrawioAttachment, manageMermaidsInMarkdownFile} from './diagrams/mermaid-diagrams.js'
 import {manageExcerptsInMarkdown} from './excerpts.js'
 import {buildConfluencePage} from './render/page.js'
@@ -71,6 +73,9 @@ export interface ConfluencePageOptions {
   generatedAt: string
   /** Génère le sommaire (macro toc) en haut de page (défaut : true). */
   generateSummary?: boolean
+  /** Résout un lien .md → URL Confluence publiée (cf. ConversionOptions.resolveMdLink). Fourni par
+   * sync ; absent ailleurs (pull/prévisualisation) → repli GitLab inchangé. */
+  resolveMdLink?: ConversionOptions['resolveMdLink']
 }
 
 /** Sens publish : Markdown → page Confluence (Storage Format + pièces jointes). */
@@ -78,17 +83,20 @@ export function renderConfluencePage(
   markdown: string,
   options: ConfluencePageOptions,
 ): {xml: string; attachments: DrawioAttachment[]} {
-  const {markdown: processed, attachments} = manageMermaidsInMarkdownFile(
+  const {markdown: withDrawio, attachments} = manageMermaidsInMarkdownFile(
     markdown,
     options.diagramBaseName,
     options.drawio,
     options.sourceFile,
     options.gitlab,
+    options.resolveMdLink,
   )
+  const processed = manageJiraChartsInMarkdown(manageEazybiReportsInMarkdown(withDrawio))
   const body = convertMarkdownToConfluence(processed, {
     sourceFile: options.sourceFile,
     jira: options.jira,
     gitlab: options.gitlab,
+    resolveMdLink: options.resolveMdLink,
   })
   return {xml: buildConfluencePage(body, options.generatedAt, options.generateSummary), attachments}
 }

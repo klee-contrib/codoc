@@ -1,10 +1,11 @@
 import path from 'node:path'
 
 import {getCodocConfig} from '../../config/codoc-config.js'
+import {INPUTS} from '../../config/codoc-inputs.js'
 import {PROJECT_ROOT} from '../../config/codoc-paths.js'
 import {agentMdContent} from '../../services/init-templates/agent-md-init.js'
 import {ensureDir, fileExists, readFile, removePath, writeFile} from '../../services/files-service.js'
-import {selectMultiple} from '../../services/prompt.js'
+import {InputsContext, resolveInputs} from '../../services/resolve-inputs.js'
 import {
   AGENT_CONTEXT_TARGETS,
   AgentContextTarget,
@@ -23,26 +24,21 @@ export interface AgentContextResult {
 }
 
 /** `codoc agent-context` : génère le contexte agent IA pour une ou plusieurs cibles. */
-export async function agentContext(
-  targetsFlag: string[] | undefined,
-  projectRoot: string = PROJECT_ROOT,
-): Promise<AgentContextResult> {
+export function agentContext(keys: AgentContextTargetKey[], projectRoot: string = PROJECT_ROOT): AgentContextResult {
   const created: string[] = []
   const warnings: string[] = []
-  const keys = await resolveAgentContextTargets(targetsFlag, projectRoot)
   for (const key of keys) generateTarget(findTarget(key), projectRoot, created, warnings)
   return {created, warnings}
 }
 
 /**
- * Flag (liste explicite, validée) → cibles déjà générées sur le disque (silencieux, toutes celles
- * qui existent déjà) → prompt interactif multi-sélection (uniquement si le flag est absent ET
- * qu'aucune cible n'existe encore). `promptFn` est injectable pour les tests.
+ * Flag (liste explicite, validée) → sinon prompt interactif multi-sélection. Ne regarde jamais le
+ * disque : générer une cible écrase toujours son fichier existant (`writeDedicated`/`writeBlock`).
+ * `context` est injectable pour les tests.
  */
 export async function resolveAgentContextTargets(
   targetsFlag: string[] | undefined,
-  projectRoot: string = PROJECT_ROOT,
-  promptFn: (targets: AgentContextTarget[]) => Promise<AgentContextTargetKey[]> = promptForTargets,
+  context?: InputsContext,
 ): Promise<AgentContextTargetKey[]> {
   if (targetsFlag !== undefined) {
     const invalid = targetsFlag.filter((t) => !isAgentContextTargetKey(t))
@@ -51,26 +47,19 @@ export async function resolveAgentContextTargets(
         `Cible(s) "${invalid.join(', ')}" inconnue(s). Valeurs possibles : ${AGENT_CONTEXT_TARGETS.map((t) => t.key).join(', ')}.`,
       )
     }
-
-    return [...new Set(targetsFlag as AgentContextTargetKey[])]
   }
 
-  const existing = AGENT_CONTEXT_TARGETS.filter((t) => fileExists(path.join(projectRoot, t.relPath))).map((t) => t.key)
-  if (existing.length) return existing
-
-  try {
-    return await promptFn(AGENT_CONTEXT_TARGETS)
-  } catch {
-    // Ctrl+C (ExitPromptError) ou stdin non interactif : traité comme "aucune cible", pas un crash.
-    return []
-  }
-}
-
-async function promptForTargets(targets: AgentContextTarget[]): Promise<AgentContextTargetKey[]> {
-  return selectMultiple(
-    'Générer le contexte agent pour quelle(s) cible(s) ?',
-    targets.map((t) => ({value: t.key, label: t.label, description: t.description})),
+  const {agentTargets} = await resolveInputs(
+    INPUTS,
+    {
+      agentTargets: {
+        flag: targetsFlag,
+        choices: AGENT_CONTEXT_TARGETS.map((t) => ({name: `${t.label} — ${t.description}`, value: t.key})),
+      },
+    },
+    context,
   )
+  return [...new Set(agentTargets as AgentContextTargetKey[])]
 }
 
 function generateTarget(target: AgentContextTarget, projectRoot: string, created: string[], warnings: string[]): void {
@@ -85,7 +74,9 @@ function generateTarget(target: AgentContextTarget, projectRoot: string, created
     const status = target.strategy === 'block' ? writeBlock(absPath, content) : writeDedicated(absPath, content)
 
     if (hadLegacy) removePath(legacyAbsPath)
-    created.push(`${target.label} (${target.relPath}) : ${hadLegacy ? 'déplacé depuis .github/codoc-agent.md' : status}`)
+    created.push(
+      `${target.label} (${target.relPath}) : ${hadLegacy ? 'déplacé depuis .github/codoc-agent.md' : status}`,
+    )
   } catch (err) {
     warnings.push(
       `${target.label} (${target.relPath}) : impossible de générer - ${

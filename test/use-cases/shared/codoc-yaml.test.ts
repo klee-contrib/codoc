@@ -62,6 +62,18 @@ describe('codoc-yaml', () => {
       assert.match(e, /parentPageId: "7"/)
       assert.match(e, /path: model\/doc\/\*\*/)
     })
+
+    it('includes titlePrefix when provided, quote-escaped like title', () => {
+      const e = buildYamlEntry({localPath: 'doc/w.md', title: 'W', titlePrefix: '[DRAFT] "v2"', parentPageId: '1', maintainedIn: 'code'})
+      assert.match(e, /titlePrefix: "\[DRAFT\] \\"v2\\""/)
+    })
+
+    it('writes the confluence: block for titlePrefix alone, even without title/parentPageId', () => {
+      const e = buildYamlEntry({localPath: 'doc/v.md', titlePrefix: '[DRAFT] ', maintainedIn: 'code'})
+      assert.match(e, /confluence:/)
+      assert.match(e, /titlePrefix: "\[DRAFT\] "/)
+      assert.ok(!e.includes('title:'))
+    })
   })
 
   describe('removeEntriesFromYaml', () => {

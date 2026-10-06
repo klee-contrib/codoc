@@ -1,5 +1,6 @@
 import {onlySingleEnv} from '../../config/codoc-config.js'
-import {askWithDefault, Rl} from '../../services/prompt.js'
+import {INPUTS} from '../../config/codoc-inputs.js'
+import {resolveInputs} from '../../services/resolve-inputs.js'
 import {AppConfig, ConfluenceConfig} from '../../types/codoc-types.js'
 
 /** Filtre `config.atlassian.environments` par clé ; lève si la clé est fournie mais inconnue. */
@@ -15,14 +16,14 @@ export function selectEnvs(config: AppConfig, envKey?: string): ConfluenceConfig
 }
 
 /** Choisit l'environnement Confluence cible (l'unique, sinon demande). */
-export async function pickEnvInteractive(rl: Rl, config: AppConfig): Promise<ConfluenceConfig> {
+export async function pickEnvInteractive(config: AppConfig): Promise<ConfluenceConfig> {
   const envs = config.atlassian.environments
   const onlyEnv = onlySingleEnv(envs)
   if (onlyEnv) return onlyEnv
 
   const keys = envs.map((e) => e.key)
-  const answer = await askWithDefault(rl, `Environnement Confluence cible (${keys.join(', ')}) :`, keys[0])
-  return envs.find((e) => e.key === answer.trim()) ?? envs[0]
+  const {targetEnv} = await resolveInputs(INPUTS, {targetEnv: {choices: keys, suggested: keys[0]}})
+  return envs.find((e) => e.key === targetEnv) ?? envs[0]
 }
 
 /** Trouve l'environnement dont le baseUrl a le même hostname que `domain`, ou undefined si aucun ne correspond. */
@@ -38,7 +39,11 @@ export function matchEnvByDomain(envs: ConfluenceConfig[], domain: string): Conf
 
 export function envKeyFromDomain(domain: string, existingKeys: string[] = []): string {
   const label = domain.split('.')[0] || domain
-  const base = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'default'
+  const base =
+    label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'default'
 
   const taken = new Set(existingKeys)
   if (!taken.has(base)) return base

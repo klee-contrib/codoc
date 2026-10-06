@@ -12,13 +12,12 @@ atlassian:
       spaceKey: TODO                            # Clé de l'espace Confluence cible (ex. DA)
       defaultParentPageId: "TODO"               # ID de la page parente par défaut (optionnel)
 
-# Configuration draw.io (optionnel - blocs \`\`\`mermaid convertis en diagrammes). Un seul jeu de
-# réglages, partagé par tous les environnements Atlassian ci-dessus.
+# Configuration draw.io (optionnel - blocs \`\`\`mermaid convertis en diagrammes, mis en page
+# automatiquement, rien à régler pour un rendu correct). Un seul jeu de réglages, partagé par tous
+# les environnements Atlassian ci-dessus.
 # drawio:
 #   macroName: drawio
 #   width: 900
-#   edgeStyle: curved    # tracé : curved | orthogonal | straight
-#   edgeAnchor: side     # ancrage des flèches : side | auto (flottant)
 
 # Configuration GitLab (optionnel - réécrit les liens vers du code en URLs GitLab dans les pages publiées)
 # gitlab:
