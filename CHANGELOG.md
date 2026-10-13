@@ -7,7 +7,28 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et ce p
 
 ## [Non publié]
 
+## [0.3.0] - 2026-10-13
+
 ### Ajouté
+
+- Identifiants partagés entre projets : `~/.env-codoc` (dossier utilisateur) est lu en plus du
+  `.env-codoc` et du `.env` du projet. Priorité : variable déjà exportée → `.env-codoc` → `.env` →
+  `~/.env-codoc` ; une ligne vide (`CLÉ=`) ne masque plus la valeur d'un fichier suivant.
+
+### Modifié
+
+- Sauvegarde d'un identifiant saisi en console : choix entre le `.env-codoc` du projet, `~/.env-codoc`
+  (tous les projets) ou aucune sauvegarde, au lieu d'une simple confirmation pour `.env-codoc`. Un
+  avertissement est affiché si le `.env-codoc` du projet n'est pas dans le `.gitignore`.
+- Les messages d'identifiant manquant indiquent `.env-codoc ou ~/.env-codoc`.
+
+## [0.2.2] - 2026-10-13
+
+### Ajouté
+
+- `codoc sync` : un lien relatif vers un `.md` local déjà publié pointe vers sa page Confluence
+  (retrouvée dans `codoc.lock`, ancre abandonnée) au lieu du fichier source GitLab ; à défaut, lien
+  GitLab avec un avertissement.
 
 - Graphiques vivants : les blocs ` ```eazybi-report ` et ` ```jira-chart ` (JSON) sont publiés en
   macros Confluence `jira-report-gadget` (rapport eazyBI) et `jirachart` (graphique Jira, ex.
@@ -31,6 +52,11 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et ce p
 
 ### Modifié
 
+- Résolution des informations (`publish`, `pull`, `sync`, `tree`, `agent-context`) : flag CLI →
+  variable d'environnement ou `codoc.yaml` → prompt console, ce dernier seulement dans un terminal
+  interactif. Hors TTY (CI), une question avec valeur par défaut la prend ; sinon la commande échoue
+  dès le démarrage en listant toutes les valeurs manquantes et où les renseigner. Un `baseUrl` ou
+  `spaceKey` absent de `codoc.yaml` est demandé mais jamais écrit (le bloc à ajouter est affiché).
 - `codoc agent-context` sans `--target` : demande désormais toujours interactivement quelle(s)
   cible(s) générer, plutôt que de régénérer silencieusement les cibles déjà présentes sur le disque.
   Génère toujours en écrasant le fichier existant de la cible choisie, comme avant.

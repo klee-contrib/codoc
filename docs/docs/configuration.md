@@ -28,6 +28,8 @@ dans `codoc.yaml`.
 
 Ne pas committer (ajouté à `.gitignore` par `init`).
 
+Les identifiants peuvent aussi être enregistrés une fois pour tous les projets dans `~/.env-codoc` (dossier utilisateur). Ordre de priorité : variable déjà exportée → `.env-codoc` du projet → `.env` du projet → `~/.env-codoc`. Une ligne vide (`CLÉ=`) ne masque pas la valeur d'un fichier suivant.
+
 | Variable | Usage |
 |---|---|
 | `CONFLUENCE_<CLÉ>_USERNAME` | Email de compte Atlassian pour l'environnement `<clé>` |
@@ -35,7 +37,7 @@ Ne pas committer (ajouté à `.gitignore` par `init`).
 
 Toujours préfixées par la clé de l'environnement (`atlassian.environments.<clé>` dans `codoc.yaml`) - même s'il n'y en a qu'un seul, ex. `CONFLUENCE_DEFAULT_USERNAME`. Pas de variable générique partagée entre environnements.
 
-Une variable absente est demandée en console (terminal interactif uniquement), puis proposée à la sauvegarde dans `.env-codoc`. Un `baseUrl` ou `spaceKey` absent de `codoc.yaml` est aussi demandé, mais jamais écrit : codoc affiche le bloc à y ajouter.
+Une variable absente est demandée en console (terminal interactif uniquement), puis proposée à la sauvegarde : dans le `.env-codoc` du projet (avec un avertissement s'il n'est pas dans le `.gitignore`), dans `~/.env-codoc` (tous les projets), ou nulle part. Un `baseUrl` ou `spaceKey` absent de `codoc.yaml` est aussi demandé, mais jamais écrit : codoc affiche le bloc à y ajouter.
 
 ## `codoc.lock`
 

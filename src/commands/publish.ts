@@ -8,7 +8,8 @@ import {publish} from '../use-cases/publish/publish.js'
 export default class Publish extends Command {
   static description =
     'Publie une doc locale (fichier ou dossier) vers Confluence, avec ajout optionnel à codoc.yaml. ' +
-    'Toute information non fournie en flag (ni déjà présente dans codoc.yaml) est demandée en console.'
+    'Toute information non fournie en flag (ni en variable d’environnement, ni dans codoc.yaml) est demandée en console ' +
+    '(terminal interactif uniquement : sinon la commande échoue en listant ce qui manque).'
 
   static args = {
     path: Args.string({

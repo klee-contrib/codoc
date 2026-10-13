@@ -8,7 +8,8 @@ import {pull} from '../use-cases/pull/pull.js'
 export default class Pull extends Command {
   static description =
     'Importe une page Confluence en local, avec ajout optionnel à codoc.yaml. ' +
-    'Toute information non fournie en flag (ni déjà présente dans codoc.yaml) est demandée en console.'
+    'Toute information non fournie en flag (ni en variable d’environnement, ni dans codoc.yaml) est demandée en console ' +
+    '(terminal interactif uniquement : sinon la commande échoue en listant ce qui manque).'
 
   static args = {
     page: Args.string({
