@@ -40,8 +40,8 @@ function resolveAtlassianEnvironment(
 
   if (!baseUrl) missing.push(`atlassian.environments.${key}.baseUrl   → codoc.yaml`)
   if (!spaceKey) missing.push(`atlassian.environments.${key}.spaceKey  → codoc.yaml`)
-  if (!username) missing.push(`${userVar} → .env-codoc`)
-  if (!apiToken) missing.push(`${tokenVar} → .env-codoc`)
+  if (!username) missing.push(`${userVar} → .env-codoc ou ~/.env-codoc`)
+  if (!apiToken) missing.push(`${tokenVar} → .env-codoc ou ~/.env-codoc`)
 
   return {
     key,

@@ -133,14 +133,14 @@ export const INPUTS = {
 function credentialInputs(envKey: string, userHint: string, tokenHint: string) {
   const {userVar, tokenVar} = confluenceEnvVarNames(envKey)
   return {
-    username: {kind: 'text', label: userVar, env: [userVar], hint: userHint, fix: '.env-codoc'},
+    username: {kind: 'text', label: userVar, env: [userVar], hint: userHint, fix: '.env-codoc ou ~/.env-codoc'},
     apiToken: {
       kind: 'secret',
       label: tokenVar,
       env: [tokenVar],
       hint: tokenHint,
       generateUrl: ATLASSIAN_TOKEN_STEPS,
-      fix: '.env-codoc',
+      fix: '.env-codoc ou ~/.env-codoc',
     },
   } satisfies Record<string, InputSpec>
 }
@@ -180,7 +180,7 @@ export function confluenceAccessInputs(envs: Record<string, RawAtlassianEnv> | u
 
 export function adHocEnvInputs(envKey: string, baseUrl: string) {
   const envNote =
-    `Environnement "${envKey}" (${baseUrl}) absent de codoc.yaml : sauvegardé dans .env-codoc si tu confirmes, ` +
+    `Environnement "${envKey}" (${baseUrl}) absent de codoc.yaml : sauvegardé (.env-codoc ou ~/.env-codoc) si tu confirmes, ` +
     `mais restera inutilisable tant que \`atlassian.environments.${envKey}\` n'est pas aussi déclaré (on te le proposera après).`
   const spaceKeyFix = '--parent-page au format https://…/wiki/spaces/<clé>/pages/<id>'
   return {

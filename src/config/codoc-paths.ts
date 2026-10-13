@@ -1,3 +1,4 @@
+import os from "node:os";
 import path from "node:path";
 
 export const PROJECT_ROOT = process.cwd();
@@ -9,3 +10,5 @@ export const STATE_FILE = path.join(PROJECT_ROOT, "codoc.lock");
 export const ENV_FILE = path.join(PROJECT_ROOT, ".env");
 
 export const CODOC_ENV_FILE = path.join(PROJECT_ROOT, ".env-codoc");
+
+export const USER_ENV_FILE = path.join(os.homedir(), ".env-codoc");

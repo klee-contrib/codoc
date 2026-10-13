@@ -1,8 +1,8 @@
 import {checkbox, confirm, input, password, select} from '@inquirer/prompts'
 
 import {loadRawConfig} from '../config/codoc-config-raw.js'
-import {CODOC_ENV_FILE} from '../config/codoc-paths.js'
-import {fileExists, readFile, writeFile} from './files-service.js'
+import {CODOC_ENV_FILE, USER_ENV_FILE} from '../config/codoc-paths.js'
+import {isGitignored, upsertEnvLine} from './env-files.js'
 import {log} from './log/logger.js'
 
 export interface InputChoice {
@@ -258,14 +258,20 @@ function validate(spec: InputSpec, request: InputRequest, value: string): true |
 async function rememberInConsole(spec: InputSpec, value: string): Promise<void> {
   const [envName] = spec.env ?? []
   if (envName) {
-    const save = await confirm({
-      message: `  Sauvegarder ${envName} dans .env-codoc pour les prochains runs ?`,
-      default: true,
-      theme: CONFIRM_THEME,
-    }).catch(() => false)
-    if (save) {
-      upsertEnvLine(envName, value)
-      log.success1(`[UPDATED] ${envName} sauvegardé dans .env-codoc`)
+    const target = await select<string>({
+      message: `  Sauvegarder ${envName} pour les prochains runs ?`,
+      choices: [
+        {name: 'Dans le dossier courant (.env-codoc, ce projet seulement)', value: CODOC_ENV_FILE},
+        {name: 'Dans mes variables utilisateur (~/.env-codoc, tous les projets)', value: USER_ENV_FILE},
+        {name: 'Ne pas sauvegarder', value: ''},
+      ],
+    }).catch(() => '')
+    if (target) {
+      upsertEnvLine(target, envName, value)
+      log.success1(`[UPDATED] ${envName} sauvegardé dans ${target}`)
+      if (target === CODOC_ENV_FILE && !isGitignored(target)) {
+        log.warning1('.env-codoc absent du .gitignore : ajoute-le pour ne pas committer ce secret.')
+      }
     }
   } else if (spec.config) {
     log.info1('Pour ne plus avoir à le saisir, ajoute dans codoc.yaml :')
@@ -277,26 +283,4 @@ function yamlSnippet(path: string[], value: string): string {
   return path
     .map((key, depth) => `       ${'  '.repeat(depth)}${key}:${depth === path.length - 1 ? ` ${value}` : ''}`)
     .join('\n')
-}
-
-function upsertEnvLine(name: string, value: string): void {
-  const lineRe = new RegExp(`^\\s*${escapeRegex(name)}\\s*=.*$`, 'm')
-  const newLine = `${name}=${value}`
-
-  if (!fileExists(CODOC_ENV_FILE)) {
-    writeFile(CODOC_ENV_FILE, `${newLine}\n`)
-    return
-  }
-
-  const content = readFile(CODOC_ENV_FILE)
-  if (lineRe.test(content)) {
-    writeFile(CODOC_ENV_FILE, content.replace(lineRe, newLine))
-  } else {
-    const sep = content.endsWith('\n') ? '' : '\n'
-    writeFile(CODOC_ENV_FILE, `${content}${sep}${newLine}\n`)
-  }
-}
-
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }

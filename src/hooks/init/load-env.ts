@@ -1,11 +1,10 @@
 import {Hook} from '@oclif/core'
-import dotenv from 'dotenv'
 
-import {CODOC_ENV_FILE, ENV_FILE} from '../../config/codoc-paths.js'
+import {CODOC_ENV_FILE, ENV_FILE, USER_ENV_FILE} from '../../config/codoc-paths.js'
+import {loadEnvFiles} from '../../services/env-files.js'
 
 const hook: Hook<'init'> = async function () {
-  dotenv.config({path: CODOC_ENV_FILE, quiet: true})
-  dotenv.config({path: ENV_FILE, quiet: true})
+  loadEnvFiles([CODOC_ENV_FILE, ENV_FILE, USER_ENV_FILE])
 }
 
 export default hook
